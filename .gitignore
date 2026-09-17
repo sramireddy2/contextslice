@@ -1,0 +1,27 @@
+# --- secrets: never commit real tokens ---
+.env
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+
+# --- tool caches ---
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+
+# --- Node (only used by the eval worker later) ---
+node_modules/
+
+# --- raw research dumps from project planning (distilled into docs/adr instead) ---
+research-notes/
+
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

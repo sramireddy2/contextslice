@@ -1,0 +1,40 @@
+[project]
+name = "contextslice"
+version = "0.1.0"
+description = "A context compiler: selects the smallest useful slice of a Figma design for a coding agent under a token budget."
+readme = "README.md"
+authors = [
+    { name = "Shashank Ramireddy", email = "shanky.ramireddy@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "typer>=0.27.2",
+]
+
+[project.scripts]
+# `uv run contextslice ...` resolves to the Typer app object in src/contextslice/cli.py
+contextslice = "contextslice.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.168.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# E/F = pycodestyle + pyflakes, I = import sorting, B = bugbear (likely bugs),
+# UP = modern-Python upgrades, SIM = simplifications.
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

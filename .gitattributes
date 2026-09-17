@@ -1,0 +1,8 @@
+# Force LF line endings everywhere, even on Windows.
+# Why it matters here: CRLF vs LF changes byte content, which changes token counts and
+# content hashes -- and this project promises byte-deterministic compiler output.
+* text=auto eol=lf
+
+# Never touch binary fixtures.
+*.png binary
+*.gz binary
