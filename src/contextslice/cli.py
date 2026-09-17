@@ -8,6 +8,7 @@ This module only parses arguments and renders output; all logic lives in importa
 unit-tested modules.
 """
 
+import time
 from pathlib import Path
 from typing import Annotated
 
@@ -16,9 +17,14 @@ from rich.console import Console
 from rich.table import Table
 
 from contextslice import __version__, sds
+from contextslice.build_ir import build_design_file
 from contextslice.config import ConfigError, Settings
+from contextslice.graph import build_graph
 from contextslice.ingest.figma_client import FigmaClient, FigmaError, FigmaRateLimitedError
 from contextslice.ingest.snapshot import SnapshotStore, ingest_file
+from contextslice.ir import DesignFile, NodeKind
+from contextslice.resolve import find_targets
+from contextslice.slicer import SliceSummary, dependency_slice, slice_roots, summarize
 from contextslice.stats import Census, take_census
 
 app = typer.Typer(
@@ -115,6 +121,98 @@ def stats(
     else:
         console.print(f"[yellow]{sds_dir} not found: skipping join rates.[/yellow]")
     _render_frames(census, top)
+
+
+@app.command(name="slice")
+def slice_command(
+    node: Annotated[str | None, typer.Option(help="Target node id, e.g. 562:9044.")] = None,
+    name: Annotated[
+        str | None, typer.Option(help='Words to match against node paths, e.g. "about desktop".')
+    ] = None,
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+) -> None:
+    """Dependency slice of a target: everything it transitively references, and nothing else."""
+    store = SnapshotStore(snapshots_dir)
+    manifest = store.latest()
+    if manifest is None:
+        console.print("[red]No snapshot found.[/red] Run `contextslice ingest` first.")
+        raise typer.Exit(code=1)
+
+    with console.status("Building IR and dependency graph..."):
+        started = time.perf_counter()
+        design = build_design_file(store.load_document(manifest), sds_dir)
+        graph = build_graph(design)
+        build_seconds = time.perf_counter() - started
+
+    target_id = _resolve_target(design, node, name)
+
+    started = time.perf_counter()
+    members = dependency_slice(graph, slice_roots(design, target_id))
+    slice_ms = (time.perf_counter() - started) * 1000
+    summary = summarize(design, graph, target_id, members)
+
+    console.print(f"\n[bold]Target:[/bold] {design.path_of(target_id)}  [dim]({target_id})[/dim]")
+    console.print(
+        f"[dim]graph: {graph.number_of_nodes():,} vertices, {graph.number_of_edges():,} edges "
+        f"(built in {build_seconds:.1f}s); slice computed in {slice_ms:.1f} ms[/dim]"
+    )
+    _render_slice(summary, design)
+
+
+def _resolve_target(design: DesignFile, node: str | None, name: str | None) -> str:
+    if node is not None:
+        if node not in design.nodes:
+            console.print(f"[red]No node with id {node!r} in this snapshot.[/red]")
+            raise typer.Exit(code=1)
+        return node
+    if name is None:
+        console.print("[red]Pass --node <id> or --name <words>.[/red]")
+        raise typer.Exit(code=1)
+
+    candidates = find_targets(design, name)
+    if len(candidates) == 1:
+        return candidates[0].id
+
+    if not candidates:
+        console.print(f"[red]Nothing matches {name!r}.[/red]")
+    else:  # ambiguous: show the options instead of guessing
+        table = Table(title=f"{len(candidates)} candidates for {name!r}: re-run with --node <id>")
+        table.add_column("id")
+        table.add_column("kind")
+        table.add_column("path")
+        for candidate in candidates:
+            table.add_row(candidate.id, candidate.kind, design.path_of(candidate.id))
+        console.print(table)
+    raise typer.Exit(code=1)
+
+
+def _render_slice(summary: SliceSummary, design: DesignFile) -> None:
+    total_components = sum(n.kind is NodeKind.COMPONENT for n in design.nodes.values())
+    total_variables = len(design.variables)
+
+    table = Table(title="Slice (the candidate universe for this target)", show_header=False)
+    rows: dict[str, str] = {
+        "design nodes": f"{summary.design_nodes:,} of {len(design.nodes):,}",
+        "  inlined instance copies": f"{summary.inlined_nodes:,}",
+        "instances": f"{summary.instances:,}",
+        "  with a code mapping": f"{summary.instances_with_mapping:,}",
+        "components": f"{summary.components:,} of {total_components:,}",
+        "component sets": f"{summary.component_sets:,}",
+        "missing (remote) components": f"{summary.missing_components:,}",
+        "variables": f"{summary.variables:,} of {total_variables:,}",
+        "  reached only through an alias": f"{summary.variables_via_alias_only:,}",
+        "  unresolved": f"{summary.unresolved_variables:,}",
+        "shared styles": f"{summary.styles:,}",
+        "code mappings": f"{summary.mappings:,} of {len(design.mappings):,}",
+        "raw JSON of sliced nodes": f"~{summary.raw_chars // 4:,} tokens",
+        "after P0 normalization": f"~{summary.normalized_chars // 4:,} tokens",
+    }
+    for label, value in rows.items():
+        table.add_row(label, value)
+    console.print(table)
 
 
 def _render_overview(census: Census) -> None:

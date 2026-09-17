@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from contextslice.ir import CodeMapping
+
 _TOKENS_PATH = Path("scripts/tokens/tokens.json")
 _CONFIG_PATH = Path("figma.config.json")
 _SDS_EXTENSION = "com.figma.sds"
@@ -70,6 +72,75 @@ def load_code_connect_node_ids(sds_root: Path) -> dict[str, str]:
         if node_id is not None:  # entries without ?node-id= are file-level bases, not components
             node_ids[placeholder] = node_id
     return node_ids
+
+
+def load_code_mappings(sds_root: Path) -> list[CodeMapping]:
+    """Read every Code Connect mapping in the repo, from both formats SDS uses.
+
+    * Template files (``Button.figma.ts``) start with ``// url=``, ``// source=`` and
+      ``// component=`` header comments.
+    * Batch files (``Icons.figma.batch.json``) list many components sharing one template.
+
+    We only read these files as text. They are never executed.
+    """
+    config = json.loads((sds_root / _CONFIG_PATH).read_text(encoding="utf-8"))
+    substitutions: dict[str, str] = config.get("codeConnect", {}).get(
+        "documentUrlSubstitutions", {}
+    )
+    source_dir = sds_root / "src"  # never scan node_modules
+    mappings: list[CodeMapping] = []
+
+    for path in sorted(source_dir.rglob("*.figma.ts")):
+        headers = _header_comments(path)
+        node_id = node_id_from_url(_substitute(headers.get("url", ""), substitutions))
+        if node_id is None:
+            continue
+        mappings.append(
+            CodeMapping(
+                node_id=node_id,
+                component_name=headers.get("component") or path.name.split(".")[0],
+                source=headers.get("source", ""),
+                template_path=path.relative_to(sds_root).as_posix(),
+            )
+        )
+
+    for path in sorted(source_dir.rglob("*.figma.batch.json")):
+        batch = json.loads(path.read_text(encoding="utf-8"))
+        template = (path.parent / batch.get("templateFile", path.name)).resolve()
+        for entry in batch.get("components", []):
+            node_id = node_id_from_url(_substitute(entry.get("url", ""), substitutions))
+            if node_id is None:
+                continue
+            mappings.append(
+                CodeMapping(
+                    node_id=node_id,
+                    component_name=entry.get("component", ""),
+                    source=entry.get("source", ""),
+                    template_path=template.relative_to(sds_root.resolve()).as_posix(),
+                )
+            )
+
+    return mappings
+
+
+def _header_comments(path: Path) -> dict[str, str]:
+    """Parse the leading ``// key=value`` lines of a Code Connect template file."""
+    headers: dict[str, str] = {}
+    with path.open(encoding="utf-8") as lines:
+        for line in lines:
+            line = line.strip()
+            if not line.startswith("//"):
+                break
+            key, separator, value = line.removeprefix("//").strip().partition("=")
+            if separator:
+                headers[key.strip()] = value.strip()
+    return headers
+
+
+def _substitute(url: str, substitutions: dict[str, str]) -> str:
+    for placeholder, replacement in substitutions.items():
+        url = url.replace(placeholder, replacement)
+    return url
 
 
 def node_id_from_url(url: str) -> str | None:

@@ -4,11 +4,12 @@ Pure functions over plain dicts (no I/O, no printing), so they are trivial to un
 The CLI is responsible for rendering.
 """
 
-import json
 from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
+
+from contextslice.figma_json import compact_json, own_properties, variable_alias_ids, walk
 
 Node = dict[str, Any]
 
@@ -56,7 +57,7 @@ def take_census(document: Node) -> Census:
         remote_components=sum(1 for c in components.values() if c.get("remote")),
     )
 
-    for node, depth in _walk(document["document"]):
+    for node, depth in walk(document["document"]):
         census.total_nodes += 1
         census.by_type[node.get("type", "UNKNOWN")] += 1
         census.max_depth = max(census.max_depth, depth)
@@ -71,50 +72,18 @@ def take_census(document: Node) -> Census:
             if node.get("componentId") not in components:
                 census.unresolved_instances += 1
 
-        own = _own_properties(node)
+        own = own_properties(node)
         for variable_id in variable_alias_ids(own):
             census.variable_bindings += 1
             census.bound_variable_ids.add(variable_id)
         for key, value in own.items():
-            census.bytes_by_property[key] += len(_compact_json(value))
+            census.bytes_by_property[key] += len(compact_json(value))
 
     for page in document["document"].get("children", []):
         for frame in _top_level_frames(page):
             census.frames.append(_frame_stat(page.get("name", ""), frame))
 
     return census
-
-
-def variable_alias_ids(value: Any) -> Iterator[str]:
-    """Yield the id of every ``{"type": "VARIABLE_ALIAS", "id": ...}`` found anywhere in ``value``.
-
-    Bindings are not only in ``node.boundVariables``: they also nest inside paints, effects,
-    text styles and component properties. One generic walker finds them all.
-    """
-    stack = [value]
-    while stack:
-        current = stack.pop()
-        if isinstance(current, dict):
-            if current.get("type") == "VARIABLE_ALIAS" and "id" in current:
-                yield current["id"]
-            else:
-                stack.extend(current.values())
-        elif isinstance(current, list):
-            stack.extend(current)
-
-
-def _walk(root: Node) -> Iterator[tuple[Node, int]]:
-    """Depth-first traversal yielding ``(node, depth)``. Iterative: safe for very deep trees."""
-    stack: list[tuple[Node, int]] = [(root, 0)]
-    while stack:
-        node, depth = stack.pop()
-        yield node, depth
-        stack.extend((child, depth + 1) for child in reversed(node.get("children", [])))
-
-
-def _own_properties(node: Node) -> Node:
-    """A node's properties without its children (children are visited by the tree walk itself)."""
-    return {key: value for key, value in node.items() if key != "children"}
 
 
 def _top_level_frames(page: Node) -> Iterator[Node]:
@@ -131,7 +100,7 @@ def _top_level_frames(page: Node) -> Iterator[Node]:
 def _frame_stat(page_name: str, frame: Node) -> FrameStat:
     node_count = 0
     instance_count = 0
-    for node, _ in _walk(frame):
+    for node, _ in walk(frame):
         node_count += 1
         instance_count += node.get("type") == "INSTANCE"
 
@@ -142,9 +111,5 @@ def _frame_stat(page_name: str, frame: Node) -> FrameStat:
         node_type=frame.get("type", "UNKNOWN"),
         node_count=node_count,
         instance_count=instance_count,
-        approx_tokens=len(_compact_json(frame)) // _CHARS_PER_TOKEN,
+        approx_tokens=len(compact_json(frame)) // _CHARS_PER_TOKEN,
     )
-
-
-def _compact_json(value: Any) -> str:
-    return json.dumps(value, separators=(",", ":"), ensure_ascii=False)

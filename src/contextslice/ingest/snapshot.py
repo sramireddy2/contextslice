@@ -110,8 +110,10 @@ def ingest_file(
         final_dir = store.directory(manifest)
         final_dir.mkdir(parents=True, exist_ok=True)
         os.replace(incoming, final_dir / _DATA_FILE)  # atomic rename on the same volume
+        # newline="\n": without it Windows writes CRLF, and the same manifest would have
+        # different bytes (and a different hash) depending on the OS that produced it.
         (final_dir / _MANIFEST_FILE).write_text(
-            json.dumps(asdict(manifest), indent=2) + "\n", encoding="utf-8"
+            json.dumps(asdict(manifest), indent=2) + "\n", encoding="utf-8", newline="\n"
         )
         return manifest, True
     finally:

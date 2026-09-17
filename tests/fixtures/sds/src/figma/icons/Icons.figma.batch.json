@@ -1,0 +1,10 @@
+{
+  "templateFile": "./Icons.figma.batch.ts",
+  "components": [
+    {
+      "url": "<FIGMA_ICONS_BASE>?node-id=9:9",
+      "component": "IconStar",
+      "source": "https://github.com/example/toy/blob/main/src/ui/icons/IconStar.tsx"
+    }
+  ]
+}

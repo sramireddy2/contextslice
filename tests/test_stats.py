@@ -1,11 +1,13 @@
-from contextslice.stats import take_census, variable_alias_ids
+from contextslice.figma_json import variable_alias_ids
+from contextslice.stats import take_census
 
 
 def test_census_counts_nodes_and_types(toy_document) -> None:
     census = take_census(toy_document)
 
-    assert census.total_nodes == 12
+    assert census.total_nodes == 15
     assert census.by_type["INSTANCE"] == 3
+    assert census.by_type["TEXT"] == 3
     assert census.by_type["CANVAS"] == 2
     assert census.max_depth == 5  # DOCUMENT > CANVAS > SECTION > FRAME > INSTANCE > TEXT
     assert census.hidden_nodes == 1
@@ -14,7 +16,8 @@ def test_census_counts_nodes_and_types(toy_document) -> None:
 def test_census_classifies_component_references(toy_document) -> None:
     census = take_census(toy_document)
 
-    assert census.components == 2
+    assert census.components == 3
+    assert census.component_sets == 1
     assert census.remote_components == 1
     assert census.instances == 3
     assert census.unresolved_instances == 1  # componentId "404:404" is not in the components map
@@ -24,10 +27,13 @@ def test_census_classifies_component_references(toy_document) -> None:
 def test_census_finds_variable_bindings_nested_inside_paints(toy_document) -> None:
     census = take_census(toy_document)
 
-    assert census.variable_bindings == 3
+    # Raw occurrences: Figma reports 5:1's fill binding twice (node level + inside the paint).
+    assert census.variable_bindings == 6
     assert census.bound_variable_ids == {
         "VariableID:1:10",
         "VariableID:1:20",
+        "VariableID:1:30",
+        "VariableID:1:99",
         "VariableID:abc123/1:10",
     }
 

@@ -1,0 +1,9 @@
+{
+  "codeConnect": {
+    "include": ["**/*.figma.ts", "**/*.figma.batch.json"],
+    "documentUrlSubstitutions": {
+      "<FIGMA_ICONS_BASE>": "https://figma.com/design/TOYKEY",
+      "<FIGMA_BUTTON>": "https://figma.com/design/TOYKEY?node-id=1-1"
+    }
+  }
+}

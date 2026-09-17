@@ -31,8 +31,17 @@ There are deliberately **no embeddings and no vector database** anywhere in the 
 
 ## Status
 
-Day 1 of a 7-day MVP build. See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and
-[docs/adr/](docs/adr/) for the reasoning behind each major decision.
+A 7-day MVP build, in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan,
+[docs/adr/](docs/adr/) for the reasoning behind each major decision, and
+[docs/census.md](docs/census.md) for measurements of the corpus.
+
+- [x] Ingest: one-shot Figma snapshot, committed for offline reproducibility
+- [x] `stats`: census of the file (18,911 nodes; one editor-only field is 57% of all bytes)
+- [x] IR + typed dependency graph + `slice` (a 443-node page slices in ~2 ms)
+- [ ] Emitter, token counting, Code Connect substitution, pass ledger
+- [ ] Structural dedupe + dominator analysis
+- [ ] Relevance + budgeted selection
+- [ ] Evaluation with local models
 
 ## Quickstart
 

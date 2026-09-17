@@ -4,10 +4,13 @@
   "lastModified": "2026-09-01T00:00:00Z",
   "schemaVersion": 0,
   "components": {
-    "1:2": { "key": "k-button", "name": "Button", "description": "", "remote": false },
+    "1:2": { "key": "k-primary", "name": "Variant=Primary", "description": "", "remote": false, "componentSetId": "1:1" },
+    "1:5": { "key": "k-secondary", "name": "Variant=Secondary", "description": "", "remote": false, "componentSetId": "1:1" },
     "9:9": { "key": "k-remote-icon", "name": "Icon/Star", "description": "", "remote": true }
   },
-  "componentSets": {},
+  "componentSets": {
+    "1:1": { "key": "k-button-set", "name": "Button", "description": "" }
+  },
   "styles": {},
   "document": {
     "id": "0:0",
@@ -20,21 +23,45 @@
         "type": "CANVAS",
         "children": [
           {
-            "id": "1:2",
+            "id": "1:1",
             "name": "Button",
-            "type": "COMPONENT",
-            "fills": [
-              {
-                "type": "SOLID",
-                "color": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1 },
-                "boundVariables": { "color": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:10" } }
-              }
-            ],
-            "boundVariables": {
-              "itemSpacing": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:20" }
-            },
+            "type": "COMPONENT_SET",
             "children": [
-              { "id": "1:3", "name": "Label", "type": "TEXT", "characters": "Button" }
+              {
+                "id": "1:2",
+                "name": "Variant=Primary",
+                "type": "COMPONENT",
+                "layoutMode": "HORIZONTAL",
+                "itemSpacing": 8.0,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": { "r": 0.17254902, "g": 0.17254902, "b": 0.17254902, "a": 1 },
+                    "boundVariables": { "color": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:10" } }
+                  }
+                ],
+                "boundVariables": {
+                  "itemSpacing": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:20" }
+                },
+                "children": [
+                  { "id": "1:3", "name": "Label", "type": "TEXT", "characters": "Button" }
+                ]
+              },
+              {
+                "id": "1:5",
+                "name": "Variant=Secondary",
+                "type": "COMPONENT",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": { "r": 1, "g": 1, "b": 1, "a": 1 },
+                    "boundVariables": { "color": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:30" } }
+                  }
+                ],
+                "children": [
+                  { "id": "1:6", "name": "Label", "type": "TEXT", "characters": "Button" }
+                ]
+              }
             ]
           }
         ]
@@ -59,9 +86,24 @@
                     "name": "Pay button",
                     "type": "INSTANCE",
                     "componentId": "1:2",
+                    "componentProperties": {
+                      "Label#7:0": { "type": "TEXT", "value": "Pay now" },
+                      "Icon#7:1": {
+                        "type": "INSTANCE_SWAP",
+                        "value": "9:9",
+                        "preferredValues": [
+                          { "type": "COMPONENT", "key": "k-remote-icon" },
+                          { "type": "COMPONENT", "key": "k-another-icon" }
+                        ]
+                      }
+                    },
+                    "boundVariables": {
+                      "fills": [{ "type": "VARIABLE_ALIAS", "id": "VariableID:abc123/1:10" }]
+                    },
                     "fills": [
                       {
                         "type": "SOLID",
+                        "color": { "r": 0.17254902, "g": 0.17254902, "b": 0.17254902, "a": 1 },
                         "boundVariables": {
                           "color": { "type": "VARIABLE_ALIAS", "id": "VariableID:abc123/1:10" }
                         }
@@ -85,7 +127,15 @@
                     "componentId": "404:404",
                     "children": []
                   },
-                  { "id": "5:4", "name": "Debug overlay", "type": "RECTANGLE", "visible": false }
+                  {
+                    "id": "5:4",
+                    "name": "Debug overlay",
+                    "type": "RECTANGLE",
+                    "visible": false,
+                    "boundVariables": {
+                      "fills": [{ "type": "VARIABLE_ALIAS", "id": "VariableID:1:99" }]
+                    }
+                  }
                 ]
               }
             ]
