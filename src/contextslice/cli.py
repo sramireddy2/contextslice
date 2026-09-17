@@ -18,6 +18,7 @@ from rich.table import Table
 
 from contextslice import __version__, sds
 from contextslice.build_ir import build_design_file
+from contextslice.compile import CompileResult, compile_context
 from contextslice.config import ConfigError, Settings
 from contextslice.graph import build_graph
 from contextslice.ingest.figma_client import FigmaClient, FigmaError, FigmaRateLimitedError
@@ -26,6 +27,7 @@ from contextslice.ir import DesignFile, NodeKind
 from contextslice.resolve import find_targets
 from contextslice.slicer import SliceSummary, dependency_slice, slice_roots, summarize
 from contextslice.stats import Census, take_census
+from contextslice.tokens import default_counter
 
 app = typer.Typer(
     help="Compile a large Figma design into the smallest useful agent context.",
@@ -160,6 +162,92 @@ def slice_command(
         f"(built in {build_seconds:.1f}s); slice computed in {slice_ms:.1f} ms[/dim]"
     )
     _render_slice(summary, design)
+
+
+@app.command(name="compile")
+def compile_command(
+    node: Annotated[str | None, typer.Option(help="Target node id, e.g. 175:4995.")] = None,
+    name: Annotated[
+        str | None, typer.Option(help='Words to match against node paths, e.g. "about desktop".')
+    ] = None,
+    substitute: Annotated[
+        bool, typer.Option(help="Pass P4: replace mapped instances with component references.")
+    ] = True,
+    components: Annotated[
+        str, typer.Option(help="Detail per code component: imports | example | full.")
+    ] = "example",
+    out: Annotated[Path | None, typer.Option(help="Write the context bundle to this file.")] = None,
+    show: Annotated[bool, typer.Option("--show", help="Print the whole bundle.")] = False,
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+) -> None:
+    """Compile a target into a context bundle and show the per-pass token ledger."""
+    if components not in ("imports", "example", "full"):
+        console.print("[red]--components must be one of: imports, example, full.[/red]")
+        raise typer.Exit(code=1)
+
+    store = SnapshotStore(snapshots_dir)
+    manifest = store.latest()
+    if manifest is None:
+        console.print("[red]No snapshot found.[/red] Run `contextslice ingest` first.")
+        raise typer.Exit(code=1)
+
+    with console.status("Building IR..."):
+        document = store.load_document(manifest)
+        design = build_design_file(document, sds_dir)
+    target_id = _resolve_target(design, node, name)
+
+    with console.status("Compiling..."):
+        result = compile_context(
+            design,
+            target_id,
+            default_counter(),
+            sds_root=sds_dir,
+            raw_document=document,
+            substitute=substitute,
+            component_detail=components,  # type: ignore[arg-type]  (validated above)
+        )
+
+    console.print(f"\n[bold]Target:[/bold] {design.path_of(target_id)}  [dim]({target_id})[/dim]")
+    _render_ledger(result)
+
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(result.bundle.text, encoding="utf-8", newline="\n")
+        console.print(f"Bundle written to {out}")
+    if show:
+        console.print(result.bundle.text, markup=False, highlight=False)
+    else:
+        preview = result.bundle.text.splitlines()
+        console.print("\n".join(preview[:30]), markup=False, highlight=False)
+        if len(preview) > 30:
+            console.print(f"[dim]... {len(preview) - 30} more lines (use --show or --out)[/dim]")
+
+
+def _render_ledger(result: CompileResult) -> None:
+    table = Table(title=f"Token ledger  (tokenizer: {result.counter_name})")
+    table.add_column("after stage")
+    table.add_column("nodes", justify="right")
+    table.add_column("tokens", justify="right")
+    table.add_column("vs previous", justify="right")
+    table.add_column("vs raw", justify="right")
+
+    first = result.ledger[0].tokens
+    previous: int | None = None
+    for row in result.ledger:
+        step = f"{row.tokens / previous:.1%}" if previous else ""
+        table.add_row(
+            row.stage, f"{row.nodes:,}", f"{row.tokens:,}", step, f"{row.tokens / first:.2%}"
+        )
+        previous = row.tokens
+    console.print(table)
+
+    sections = "   ".join(f"{name}: {tokens:,}" for name, tokens in result.section_tokens.items())
+    console.print(
+        f"[dim]final bundle by section -> {sections}   (compiled in {result.seconds:.2f}s)[/dim]\n"
+    )
 
 
 def _resolve_target(design: DesignFile, node: str | None, name: str | None) -> str:

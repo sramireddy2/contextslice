@@ -16,3 +16,10 @@ by ContextSlice (compiled context bundles, statistics) are computed from it.
 `vendor/sds` is a git submodule pinned to a specific commit of https://github.com/figma/sds,
 licensed under the MIT License (see `vendor/sds/LICENSE`). ContextSlice reads its design-token
 dump (`scripts/tokens/tokens.json`) and Code Connect files (`figma.config.json`, `src/figma/**`).
+
+## Qwen2.5-Coder tokenizer
+
+`assets/tokenizers/qwen2.5-coder/tokenizer.json` is the unmodified tokenizer definition from
+https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct (Apache License 2.0, Alibaba Cloud).
+It is included so token budgets can be counted exactly and offline for the model family used in
+the evaluation. No model weights are distributed here.

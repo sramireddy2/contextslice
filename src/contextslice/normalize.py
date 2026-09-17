@@ -103,10 +103,15 @@ def normalize_props(raw: Raw) -> Raw:
 
 
 def _component_properties(properties: Raw | None) -> Raw:
-    """Keep each property's type and value; drop ``preferredValues`` (57% of the raw file)."""
+    """Keep each property's type and value; drop ``preferredValues`` (57% of the raw file).
+
+    SLOT-typed properties are dropped too: their value is an opaque editor GUID, and the slot's
+    real content is already visible as the SLOT node's children.
+    """
     return {
         _property_name(name): {"type": prop.get("type"), "value": prop.get("value")}
         for name, prop in (properties or {}).items()
+        if prop.get("type") != "SLOT"
     }
 
 

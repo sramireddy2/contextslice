@@ -38,7 +38,8 @@ A 7-day MVP build, in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for the p
 - [x] Ingest: one-shot Figma snapshot, committed for offline reproducibility
 - [x] `stats`: census of the file (18,911 nodes; one editor-only field is 57% of all bytes)
 - [x] IR + typed dependency graph + `slice` (a 443-node page slices in ~2 ms)
-- [ ] Emitter, token counting, Code Connect substitution, pass ledger
+- [x] `compile`: exact token counting, outline emitter, Code Connect substitution, pass ledger
+      (a 1.33M-token page compiles to 3,254 tokens: 0.25% of raw)
 - [ ] Structural dedupe + dominator analysis
 - [ ] Relevance + budgeted selection
 - [ ] Evaluation with local models

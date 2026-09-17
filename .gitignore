@@ -25,3 +25,6 @@ research-notes/
 Thumbs.db
 .idea/
 .vscode/
+
+# --- compiled bundles written by `contextslice compile --out` ---
+out/
