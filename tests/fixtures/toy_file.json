@@ -1,0 +1,97 @@
+{
+  "name": "Toy Design System",
+  "version": "42",
+  "lastModified": "2026-09-01T00:00:00Z",
+  "schemaVersion": 0,
+  "components": {
+    "1:2": { "key": "k-button", "name": "Button", "description": "", "remote": false },
+    "9:9": { "key": "k-remote-icon", "name": "Icon/Star", "description": "", "remote": true }
+  },
+  "componentSets": {},
+  "styles": {},
+  "document": {
+    "id": "0:0",
+    "name": "Document",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "0:1",
+        "name": "Components",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "1:2",
+            "name": "Button",
+            "type": "COMPONENT",
+            "fills": [
+              {
+                "type": "SOLID",
+                "color": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1 },
+                "boundVariables": { "color": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:10" } }
+              }
+            ],
+            "boundVariables": {
+              "itemSpacing": { "type": "VARIABLE_ALIAS", "id": "VariableID:1:20" }
+            },
+            "children": [
+              { "id": "1:3", "name": "Label", "type": "TEXT", "characters": "Button" }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "0:2",
+        "name": "Examples",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "2:1",
+            "name": "Flows",
+            "type": "SECTION",
+            "children": [
+              {
+                "id": "5:0",
+                "name": "Checkout",
+                "type": "FRAME",
+                "children": [
+                  {
+                    "id": "5:1",
+                    "name": "Pay button",
+                    "type": "INSTANCE",
+                    "componentId": "1:2",
+                    "fills": [
+                      {
+                        "type": "SOLID",
+                        "boundVariables": {
+                          "color": { "type": "VARIABLE_ALIAS", "id": "VariableID:abc123/1:10" }
+                        }
+                      }
+                    ],
+                    "children": [
+                      { "id": "I5:1;1:3", "name": "Label", "type": "TEXT", "characters": "Pay now" }
+                    ]
+                  },
+                  {
+                    "id": "5:2",
+                    "name": "Star",
+                    "type": "INSTANCE",
+                    "componentId": "9:9",
+                    "children": []
+                  },
+                  {
+                    "id": "5:3",
+                    "name": "Orphan",
+                    "type": "INSTANCE",
+                    "componentId": "404:404",
+                    "children": []
+                  },
+                  { "id": "5:4", "name": "Debug overlay", "type": "RECTANGLE", "visible": false }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
