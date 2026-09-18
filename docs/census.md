@@ -105,3 +105,35 @@ Fact checked along the way: in NetworkX 3.6 `immediate_dominators` does not incl
 in its result; and an immediate dominator that is not itself emitted (e.g. a main component
 vertex shared by many instances) must not be mistaken for an owner, so "private" means
 "dominated by some emitted, non-root subtree" (walk up the dominator tree to find it).
+
+# Budgeted selection (Day 5)
+
+`contextslice compile --node 175:4995 --budget B` on the About screen (2,146 tokens unbudgeted):
+
+| Budget | Selector | Result | Lines kept | Repairs |
+|---|---|---|---|---|
+| 2,000 | PageRank | **1,978** tokens, verified | 72 of 76 | 0 |
+| 2,000 | BFS decay | 1,974 tokens, verified | 75 of 76 | 0 |
+| 1,000 | PageRank | **971** tokens, verified | 21 of 76 | 1 |
+
+How it works: every context node is an item with levels (omitted / one-line stub / full line);
+code components have two levels (imports / + JSX example). A lazy cost-benefit greedy applies
+"upgrade one item by one level" moves ranked by gain per token. A move's cost includes any
+definition it needs that nobody has paid for yet (the ancestor spine, `$token` lines, the
+component entry), so shared definitions are paid once and an item's cost depends on what was
+already chosen. When a definition is first paid, the moves that depended on it are re-pushed
+with fresh keys: without that, lazy greedy would trust stale (too pessimistic) keys and pick
+worse items first. Line costs are near-additive, not exact, so the bundle is rendered, counted
+exactly and repaired (latest moves undone) until it fits; the verifier then asserts
+`tokens <= B` and that no `$token` or `<Component>` reference is left dangling.
+
+What the numbers say so far:
+
+- At B=2,000 the two selectors agree almost completely: with only 76 lines to choose from, the
+  budget removes the last few percent and ranking barely matters. The difference between
+  PageRank and plain depth decay can only show up at tight budgets or on bigger targets, which
+  is what the evaluation must test rather than assume.
+- At B=1,000 half the budget went to COMPONENTS (489 tokens of JSX examples). Whether that is
+  the right trade against tree lines is exactly the kind of constant (`EXAMPLE_SHARE`) the
+  evaluation should ablate; it is a documented number, not a tuned one.
+- SciPy became a dependency here: NetworkX's `pagerank` is implemented on top of it.

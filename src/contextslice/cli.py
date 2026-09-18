@@ -180,6 +180,15 @@ def compile_command(
     components: Annotated[
         str, typer.Option(help="Detail per code component: imports | example | full.")
     ] = "example",
+    budget: Annotated[
+        int | None, typer.Option(help="Token budget B: run budgeted selection (P7).")
+    ] = None,
+    selector: Annotated[
+        str, typer.Option(help="Relevance for selection: ppr (PageRank) | bfs (depth decay).")
+    ] = "ppr",
+    request: Annotated[
+        str | None, typer.Option(help="The developer's request; mentioned names get priority.")
+    ] = None,
     out: Annotated[Path | None, typer.Option(help="Write the context bundle to this file.")] = None,
     show: Annotated[bool, typer.Option("--show", help="Print the whole bundle.")] = False,
     snapshots_dir: SnapshotsDir = Path("snapshots"),
@@ -190,6 +199,9 @@ def compile_command(
     """Compile a target into a context bundle and show the per-pass token ledger."""
     if components not in ("imports", "example", "full"):
         console.print("[red]--components must be one of: imports, example, full.[/red]")
+        raise typer.Exit(code=1)
+    if selector not in ("ppr", "bfs"):
+        console.print("[red]--selector must be ppr or bfs.[/red]")
         raise typer.Exit(code=1)
 
     store = SnapshotStore(snapshots_dir)
@@ -213,10 +225,23 @@ def compile_command(
             substitute=substitute,
             dedupe=dedupe,
             component_detail=components,  # type: ignore[arg-type]  (validated above)
+            budget=budget,
+            selector=selector,
+            request=request,
         )
 
     console.print(f"\n[bold]Target:[/bold] {design.path_of(target_id)}  [dim]({target_id})[/dim]")
     _render_ledger(result)
+    if result.verification.ok:
+        limit = f" <= {budget}" if budget is not None else ""
+        console.print(
+            f"[green]verified:[/green] {result.verification.tokens:,} tokens{limit}, "
+            "no dangling references\n"
+        )
+    else:
+        for problem in result.verification.problems:
+            console.print(f"[red]verification failed:[/red] {problem}")
+        raise typer.Exit(code=3)
 
     if out is not None:
         out.parent.mkdir(parents=True, exist_ok=True)

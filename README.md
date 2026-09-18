@@ -42,7 +42,8 @@ A 7-day MVP build, in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for the p
       (a 1.33M-token page compiles to 3,254 tokens: 0.25% of raw)
 - [x] Structural dedupe (Merkle digests, `xN` folding) + dominator analysis (`explain`:
       retained tokens per subtree, shared vs private definitions)
-- [ ] Relevance + budgeted selection
+- [x] Relevance (personalized PageRank, BFS-decay ablation) + budgeted selection (lazy
+      cost-benefit greedy with dependency-aware costs) + verifier (`compile --budget B`)
 - [ ] Evaluation with local models
 
 ## Quickstart

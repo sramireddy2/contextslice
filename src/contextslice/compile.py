@@ -10,12 +10,25 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import networkx as nx
+
 from contextslice.dedupe import collapse_repeats, folded_nodes
 from contextslice.emit import Bundle, ComponentDetail, emit
 from contextslice.figma_json import Raw, compact_json, walk
+from contextslice.graph import build_graph
 from contextslice.ir import DesignFile
+from contextslice.select import (
+    FULL,
+    BudgetError,
+    Selection,
+    build_items,
+    relevance_bfs,
+    relevance_pagerank,
+    select,
+)
 from contextslice.substitute import ContextNode, build_context_tree, walk_context
 from contextslice.tokens import TokenCounter
+from contextslice.verify import Verification, verify
 
 
 @dataclass(frozen=True)
@@ -29,6 +42,8 @@ class LedgerRow:
 class CompileResult:
     tree: ContextNode
     bundle: Bundle
+    selection: Selection | None
+    verification: Verification
     ledger: tuple[LedgerRow, ...]
     section_tokens: dict[str, int]
     counter_name: str
@@ -49,6 +64,10 @@ def compile_context(
     substitute: bool = True,
     dedupe: bool = True,
     component_detail: ComponentDetail = "example",
+    budget: int | None = None,
+    selector: str = "ppr",
+    request: str | None = None,
+    graph: nx.MultiDiGraph | None = None,
 ) -> CompileResult:
     started = time.perf_counter()
     ledger: list[LedgerRow] = []
@@ -97,9 +116,62 @@ def compile_context(
             )
         )
 
+    selection = None
+    if budget is not None:
+        if selector == "bfs":
+            scores = relevance_bfs(tree)
+        else:
+            scores = relevance_pagerank(design, graph or build_graph(design), target_id, request)
+        items = build_items(design, tree, counter, scores)
+        # Fixed overhead = header + section headings: everything that is not an item.
+        core_only = Selection(levels={tree.node_id: FULL})
+        core_bundle = emit(
+            design, tree, sds_root=sds_root, component_detail=component_detail, selection=core_only
+        )
+        overhead = counter.count(core_bundle.text) - items[tree.node_id].full_cost
+        margin = max(8, budget // 50)  # line costs are ~additive, not exactly: keep 2% back
+        if budget - overhead - margin < items[tree.node_id].full_cost:
+            raise BudgetError(
+                f"budget {budget} cannot hold the fixed overhead ({overhead} tokens of header and "
+                f"section headings + {margin} safety margin) plus the target line "
+                f"({items[tree.node_id].full_cost} tokens)"
+            )
+        selection = select(
+            design,
+            tree,
+            items,
+            counter,
+            budget - overhead - margin,
+            sds_root=sds_root,
+            component_detail=component_detail,
+        )
+        bundle = emit(
+            design, tree, sds_root=sds_root, component_detail=component_detail, selection=selection
+        )
+        # Exact count, then repair: undo the latest (lowest-ratio) moves until it truly fits.
+        undone = 0
+        while counter.count(bundle.text) > budget and selection.undo_last() is not None:
+            undone += 1
+            bundle = emit(
+                design,
+                tree,
+                sds_root=sds_root,
+                component_detail=component_detail,
+                selection=selection,
+            )
+        ledger.append(
+            LedgerRow(
+                f"P7 budgeted selection (B={budget}, {selector}, {undone} repaired)",
+                counter.count(bundle.text),
+                len(bundle.rendered.lines),
+            )
+        )
+
     return CompileResult(
         tree=tree,
         bundle=bundle,
+        selection=selection,
+        verification=verify(bundle, counter, budget),
         ledger=tuple(ledger),
         section_tokens={
             "header": counter.count(bundle.header),

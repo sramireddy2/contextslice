@@ -22,7 +22,7 @@ from typing import Any, Literal
 
 from contextslice.graph import mapping_key
 from contextslice.ir import DesignFile, DesignNode, NodeKind, Variable
-from contextslice.substitute import ContextNode, Role, mapping_index, walk_context
+from contextslice.substitute import ContextNode, Role, mapping_index
 from contextslice.templates import Template, load_template
 
 ComponentDetail = Literal["imports", "example", "full"]
@@ -102,14 +102,17 @@ def emit(
     *,
     sds_root: Path | None = None,
     component_detail: ComponentDetail = "example",
+    selection: Any = None,
 ) -> Bundle:
-    rendered = render(design, root, sds_root=sds_root, component_detail=component_detail)
+    rendered = render(
+        design, root, sds_root=sds_root, component_detail=component_detail, selection=selection
+    )
     tree_lines = [("  " * depth) + line for _, depth, line in rendered.lines]
     components = list(rendered.component_entries.values())
     tokens = list(rendered.variable_lines.values())
 
     return Bundle(
-        header=_header(design, root),
+        header=_header(design, root, budgeted=selection is not None),
         components="\n".join(["## COMPONENTS", *components]) if components else "",
         tokens="\n".join(["## TOKENS", *tokens]) if tokens else "",
         tree="## TREE\n" + "\n".join(tree_lines),
@@ -123,20 +126,103 @@ def render(
     *,
     sds_root: Path | None = None,
     component_detail: ComponentDetail = "example",
+    selection: Any = None,
 ) -> Rendered:
-    """Render every item separately so callers can cost them one by one."""
+    """Render every item separately so callers can cost them one by one.
+
+    ``selection`` (see select.Selection) assigns each context node a level: 0 = omitted with its
+    whole subtree, 1 = a one-line stub, 2 = the full line; and may pick a per-component detail.
+    Without a selection everything is rendered in full.
+    """
     renderer = _Renderer(design)
-    lines = tuple((node, depth, renderer.line(node)) for node, depth in walk_context(root))
+    lines: list[tuple[ContextNode, int, str]] = []
+
+    def level_of(node: ContextNode) -> int:
+        if selection is None or node is root:
+            return 2
+        return selection.levels.get(node.node_id, 0)
+
+    def visit(node: ContextNode, depth: int) -> None:
+        level = level_of(node)
+        if level == 0:
+            return
+        shown = [child for child in node.children if level_of(child) > 0]
+        text = renderer.line(node) if level == 2 else renderer.stub(node)
+        omitted = len(node.children) - len(shown)
+        if omitted:  # the model must know something was left out here
+            text += f" (+{omitted} elided)"
+        lines.append((node, depth, text))
+        for child in shown:
+            visit(child, depth + 1)
+
+    visit(root, 0)
+    overrides = selection.component_detail if selection is not None else None
     return Rendered(
-        lines=lines,
+        lines=tuple(lines),
         variable_lines=_variable_lines(design, renderer),
-        component_entries=_component_entries(renderer, sds_root, component_detail),
+        component_entries=_component_entries(renderer, sds_root, component_detail, overrides),
     )
 
 
-def _header(design: DesignFile, root: ContextNode) -> str:
+@dataclass(frozen=True)
+class ItemText:
+    """What one context node would emit, and which definitions its full line depends on."""
+
+    full: str
+    stub: str
+    variables: tuple[str, ...]
+    mappings: tuple[str, ...]  # graph keys (see graph.mapping_key)
+
+
+def describe(design: DesignFile, node: ContextNode) -> ItemText:
+    renderer = _Renderer(design)
+    full = renderer.line(node)
+    return ItemText(
+        full=full,
+        stub=_Renderer(design).stub(node),
+        variables=tuple(renderer.used_variables),
+        mappings=tuple(
+            mapping_key(m.node_id, m.component_name) for m in renderer.used_mappings.values()
+        ),
+    )
+
+
+def variable_lines_for(design: DesignFile, variable_ids: list[str]) -> dict[str, str]:
+    renderer = _Renderer(design)
+    renderer.used_variables = dict.fromkeys(variable_ids)
+    return _variable_lines(design, renderer)
+
+
+def mappings_for(design: DesignFile, keys: list[str]) -> dict[str, Any]:
+    wanted = set(keys)
+    found: dict[str, Any] = {}
+    for mapping in design.mappings:
+        key = mapping_key(mapping.node_id, mapping.component_name)
+        if key in wanted:
+            found.setdefault(key, mapping)
+    return found
+
+
+def component_entry(mapping: Any, sds_root: Path | None, detail: str) -> str:
+    """The COMPONENTS entry for one mapping at the given detail level."""
+    template = load_template(sds_root, mapping) if sds_root else Template((), "", "")
+    lines = [f"{mapping.component_name}: {' '.join(template.imports)}".rstrip()]
+    if detail in ("example", "full") and template.example:
+        lines.append(f"  {template.example}")
+    if detail == "full" and template.logic:
+        lines.append(f"  props: {template.logic}")
+    return "\n".join(lines)
+
+
+def _header(design: DesignFile, root: ContextNode, budgeted: bool = False) -> str:
+    elision = (
+        "# (+N elided) = N more child elements exist there but were left out to fit the budget.\n"
+        if budgeted
+        else ""
+    )
     return (
         f"# Design context for: {_quote(design.path_of(root.node_id), 120)}\n"
+        f"{elision}"
         "# <Name ...> = an existing code component: import and use it (see COMPONENTS).\n"
         "# xN at the end of a line = that element, with its contents, repeats N times in a row.\n"
         "# $x = the CSS variable var(--sds-x) (see TOKENS). Never hardcode a value that has a "
@@ -159,6 +245,20 @@ class _Renderer:
 
     def line(self, context: ContextNode) -> str:
         text = self._line(context)
+        return f"{text} x{context.repeat}" if context.repeat > 1 else text
+
+    def stub(self, context: ContextNode) -> str:
+        """The cheapest line that still says what is here: kind and name, no properties.
+
+        Component references and slots have no cheaper form than their full line.
+        """
+        node = self.design.nodes[context.node_id]
+        if context.role is not Role.NODE:
+            return self.line(context)
+        if node.kind is NodeKind.TEXT:
+            text = f"Text {_quote(str(node.props.get('characters', '')), 30)}"
+        else:
+            text = f"{_KIND_LABEL.get(node.kind, 'Frame')} {_quote(node.name, _MAX_NAME)}"
         return f"{text} x{context.repeat}" if context.repeat > 1 else text
 
     def _line(self, context: ContextNode) -> str:
@@ -312,34 +412,20 @@ def _paints(paints: list[dict[str, Any]] | None) -> str | None:
 
 
 def _component_entries(
-    renderer: _Renderer, sds_root: Path | None, detail: ComponentDetail
+    renderer: _Renderer,
+    sds_root: Path | None,
+    detail: ComponentDetail,
+    overrides: dict[str, str] | None = None,
 ) -> dict[str, str]:
-    """One entry per used code component, keyed by the mapping's graph key."""
+    """One entry per used code component, keyed by the mapping's graph key.
+
+    Each mapping gets its own entry (icons included) so that every entry's cost belongs to
+    exactly one dependency; the selector relies on that.
+    """
     entries: dict[str, str] = {}
-    batches: dict[str, list[str]] = {}
-
-    for (template_path, name), mapping in sorted(renderer.used_mappings.items()):
-        if ".batch." in template_path:  # e.g. ~290 icons sharing one template: list them together
-            batches.setdefault(template_path, []).append(name)
-            continue
-        template = load_template(sds_root, mapping) if sds_root else Template((), "", "")
-        lines = [f"{name}: {' '.join(template.imports)}".rstrip()]
-        if detail in ("example", "full") and template.example:
-            lines.append(f"  {template.example}")
-        if detail == "full" and template.logic:
-            lines.append(f"  props: {template.logic}")
-        entries[mapping_key(mapping.node_id, name)] = "\n".join(lines)
-
-    for template_path, names in sorted(batches.items()):
-        names.sort()
-        mapping = renderer.used_mappings[(template_path, names[0])]
-        template = load_template(sds_root, mapping) if sds_root else Template((), "", "")
-        lines = [f"{', '.join(names)}: same API, e.g. {' '.join(template.imports)}".rstrip()]
-        if detail in ("example", "full") and template.example:
-            lines.append(f"  {template.example}")
-        # The shared entry is attributed to the first name; the others cost nothing extra.
-        entries[mapping_key(mapping.node_id, names[0])] = "\n".join(lines)
-
+    for (_, name), mapping in sorted(renderer.used_mappings.items()):
+        key = mapping_key(mapping.node_id, name)
+        entries[key] = component_entry(mapping, sds_root, (overrides or {}).get(key, detail))
     return entries
 
 
