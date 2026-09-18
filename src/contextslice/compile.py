@@ -10,10 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from contextslice.dedupe import collapse_repeats, folded_nodes
 from contextslice.emit import Bundle, ComponentDetail, emit
 from contextslice.figma_json import Raw, compact_json, walk
 from contextslice.ir import DesignFile
-from contextslice.substitute import build_context_tree, walk_context
+from contextslice.substitute import ContextNode, build_context_tree, walk_context
 from contextslice.tokens import TokenCounter
 
 
@@ -26,6 +27,7 @@ class LedgerRow:
 
 @dataclass(frozen=True)
 class CompileResult:
+    tree: ContextNode
     bundle: Bundle
     ledger: tuple[LedgerRow, ...]
     section_tokens: dict[str, int]
@@ -45,6 +47,7 @@ def compile_context(
     sds_root: Path | None = None,
     raw_document: Raw | None = None,
     substitute: bool = True,
+    dedupe: bool = True,
     component_detail: ComponentDetail = "example",
 ) -> CompileResult:
     started = time.perf_counter()
@@ -70,7 +73,7 @@ def compile_context(
         )
     )
 
-    bundle = plain
+    bundle, tree = plain, plain_tree
     if substitute:
         tree = build_context_tree(design, target_id, substitute=True)
         bundle = emit(design, tree, sds_root=sds_root, component_detail=component_detail)
@@ -82,7 +85,20 @@ def compile_context(
             )
         )
 
+    if dedupe:
+        tree = collapse_repeats(design, tree)
+        bundle = emit(design, tree, sds_root=sds_root, component_detail=component_detail)
+        folded = sum(node.repeat - 1 for node in folded_nodes(tree))
+        ledger.append(
+            LedgerRow(
+                f"P5 structural dedupe ({folded} repeats folded)",
+                counter.count(bundle.text),
+                sum(1 for _ in walk_context(tree)),
+            )
+        )
+
     return CompileResult(
+        tree=tree,
         bundle=bundle,
         ledger=tuple(ledger),
         section_tokens={

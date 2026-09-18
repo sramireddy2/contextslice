@@ -40,7 +40,8 @@ A 7-day MVP build, in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for the p
 - [x] IR + typed dependency graph + `slice` (a 443-node page slices in ~2 ms)
 - [x] `compile`: exact token counting, outline emitter, Code Connect substitution, pass ledger
       (a 1.33M-token page compiles to 3,254 tokens: 0.25% of raw)
-- [ ] Structural dedupe + dominator analysis
+- [x] Structural dedupe (Merkle digests, `xN` folding) + dominator analysis (`explain`:
+      retained tokens per subtree, shared vs private definitions)
 - [ ] Relevance + budgeted selection
 - [ ] Evaluation with local models
 

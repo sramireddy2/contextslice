@@ -69,3 +69,39 @@ the context would cost if the compiler stopped after that stage.
    block nine times. That is the job of structural dedupe (P5).
 5. Component detail is a budget knob: imports only / + JSX example / + prop logic costs
    259 / 771 / 1,486 tokens for the About page's 12 components.
+
+# Dedupe and dominators (Day 4)
+
+## Structural dedupe (P5)
+
+Every context-tree node gets a Merkle digest (its own content + its children's digests, no
+ids). Runs of identical siblings fold into the first occurrence with an `xN` suffix.
+
+| Target | after P4 | after P5 | repeats folded | nodes |
+|---|---|---|---|---|
+| Examples/About > Desktop | 3,278 | **2,146** (0.16% of raw) | 5 | 114 -> 76 |
+
+Non-adjacent repeats (a named template defined once and referenced later) were measured
+before deciding: they would save a further 0% (About), 3% (Dialog), 7.8% (Product Detail set)
+and 16.3% (Shop set). The large numbers come only from sets holding both a desktop and a
+mobile variant that share sub-blocks; evaluation targets are single screens, so templates
+went to the stretch list with these numbers attached.
+
+## Dominators (P3) and `contextslice explain`
+
+On the dependency slice (virtual root -> target), `nx.immediate_dominators` gives each vertex
+its immediate dominator; *retained tokens* = own tokens + everything it dominates = what
+dropping it would actually free. For the About screen (2,146 tokens):
+
+- All 7 variables are **shared**: each is used from independent subtrees, so no single subtree
+  can free its TOKENS line. Dropping a Card to save tokens never recovers
+  `color-text-default-default` (the question from Day 3).
+- 3 of 16 code components are shared (203 tokens); 13 are **private** to one subtree
+  (564 tokens) and are priced into it.
+- The top owner after the root is the Footer: 7 own tokens, 622 retained, because its slot
+  content carries four private code mappings.
+
+Fact checked along the way: in NetworkX 3.6 `immediate_dominators` does not include the root
+in its result; and an immediate dominator that is not itself emitted (e.g. a main component
+vertex shared by many instances) must not be mistaken for an owner, so "private" means
+"dominated by some emitted, non-root subtree" (walk up the dominator tree to find it).

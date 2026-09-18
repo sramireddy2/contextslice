@@ -35,6 +35,8 @@ class ContextNode:
     role: Role
     mapping: CodeMapping | None
     children: tuple["ContextNode", ...]
+    # >1 when this node (with its whole subtree) is repeated that many times in a row (see dedupe).
+    repeat: int = 1
 
 
 def mapping_index(design: DesignFile) -> dict[str, CodeMapping]:

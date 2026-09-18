@@ -34,6 +34,10 @@ Each step ends with something runnable from the CLI, a passing test suite, and a
 
 ## Stretch (in order)
 
+0. Named templates for *non-adjacent* repeated subtrees (`@T1` defined once, referenced
+   later). Measured on Day 4: 0% / 3% extra savings on single-screen targets (About, Dialog),
+   but 8-16% on two-variant sets that contain both desktop and mobile. Deferred because the
+   evaluation targets are single screens.
 1. Visual similarity via a no-network Docker + Playwright render worker
 2. Synthetic scaler: replicate real SDS screens to ~72 screens / ~17k nodes for LLM-free latency + budget-guarantee stress tests
 3. Exact ILP reference solver (`scipy.optimize.milp`) to measure the greedy selector's optimality gap

@@ -20,6 +20,7 @@ from contextslice import __version__, sds
 from contextslice.build_ir import build_design_file
 from contextslice.compile import CompileResult, compile_context
 from contextslice.config import ConfigError, Settings
+from contextslice.dominate import analyze_ownership, definition_split, top_owners
 from contextslice.graph import build_graph
 from contextslice.ingest.figma_client import FigmaClient, FigmaError, FigmaRateLimitedError
 from contextslice.ingest.snapshot import SnapshotStore, ingest_file
@@ -173,6 +174,9 @@ def compile_command(
     substitute: Annotated[
         bool, typer.Option(help="Pass P4: replace mapped instances with component references.")
     ] = True,
+    dedupe: Annotated[
+        bool, typer.Option(help="Pass P5: fold runs of identical siblings into one line (xN).")
+    ] = True,
     components: Annotated[
         str, typer.Option(help="Detail per code component: imports | example | full.")
     ] = "example",
@@ -207,6 +211,7 @@ def compile_command(
             sds_root=sds_dir,
             raw_document=document,
             substitute=substitute,
+            dedupe=dedupe,
             component_detail=components,  # type: ignore[arg-type]  (validated above)
         )
 
@@ -224,6 +229,77 @@ def compile_command(
         console.print("\n".join(preview[:30]), markup=False, highlight=False)
         if len(preview) > 30:
             console.print(f"[dim]... {len(preview) - 30} more lines (use --show or --out)[/dim]")
+
+
+@app.command()
+def explain(
+    node: Annotated[str | None, typer.Option(help="Target node id, e.g. 175:4995.")] = None,
+    name: Annotated[
+        str | None, typer.Option(help='Words to match against node paths, e.g. "about desktop".')
+    ] = None,
+    top: Annotated[int, typer.Option(help="How many subtrees to list.")] = 15,
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+) -> None:
+    """Where the tokens go: subtrees by *retained* tokens, and shared vs private definitions."""
+    store = SnapshotStore(snapshots_dir)
+    manifest = store.latest()
+    if manifest is None:
+        console.print("[red]No snapshot found.[/red] Run `contextslice ingest` first.")
+        raise typer.Exit(code=1)
+
+    with console.status("Building IR and graph..."):
+        design = build_design_file(store.load_document(manifest), sds_dir)
+        graph = build_graph(design)
+    target_id = _resolve_target(design, node, name)
+
+    counter = default_counter()
+    with console.status("Compiling and analysing dominators..."):
+        result = compile_context(design, target_id, counter, sds_root=sds_dir)
+        ownership = analyze_ownership(design, graph, target_id, result.bundle.rendered, counter)
+
+    rendered = result.bundle.rendered
+    is_variable = rendered.variable_lines.__contains__
+    is_mapping = rendered.component_entries.__contains__
+
+    console.print(f"\n[bold]Target:[/bold] {design.path_of(target_id)}  [dim]({target_id})[/dim]")
+    console.print(f"bundle: {result.tokens:,} tokens ({counter.name})\n")
+
+    table = Table(title="Definitions: shared across subtrees vs private to one subtree")
+    table.add_column("definitions")
+    table.add_column("shared", justify="right")
+    table.add_column("tokens", justify="right")
+    table.add_column("private", justify="right")
+    table.add_column("tokens", justify="right")
+    for label, keys in (
+        ("variables (TOKENS)", list(rendered.variable_lines)),
+        ("code components (COMPONENTS)", list(rendered.component_entries)),
+    ):
+        shared_n, shared_t, private_n, private_t = definition_split(ownership, keys)
+        table.add_row(label, str(shared_n), f"{shared_t:,}", str(private_n), f"{private_t:,}")
+    console.print(table)
+    console.print(
+        "[dim]shared = no single subtree in the bundle dominates it (its uses come from "
+        "independent subtrees), so dropping any one subtree never frees its tokens.[/dim]\n"
+    )
+
+    table = Table(title=f"Top {top} subtrees by retained tokens (what dropping each would free)")
+    table.add_column("line")
+    table.add_column("own", justify="right")
+    table.add_column("retained", justify="right")
+    table.add_column("private vars", justify="right")
+    table.add_column("private comps", justify="right")
+    for row in top_owners(ownership, rendered, is_variable, is_mapping, limit=top):
+        table.add_row(
+            row.line[:70] + ("…" if len(row.line) > 70 else ""),
+            f"{row.own:,}",
+            f"{row.retained:,}",
+            str(row.private_variables),
+            str(row.private_components),
+        )
+    console.print(table)
 
 
 def _render_ledger(result: CompileResult) -> None:
