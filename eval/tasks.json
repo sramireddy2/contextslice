@@ -1,0 +1,50 @@
+[
+  {
+    "id": "about",
+    "node_id": "175:4995",
+    "name": "About",
+    "request": "Marketing page with a header, hero, two card grids and a footer."
+  },
+  {
+    "id": "landing",
+    "node_id": "175:6523",
+    "name": "Landing Page",
+    "request": "Landing page with a hero, feature panels and a footer."
+  },
+  {
+    "id": "pricing",
+    "node_id": "175:5828",
+    "name": "Pricing",
+    "request": "Pricing page with plan cards and a FAQ."
+  },
+  {
+    "id": "product",
+    "node_id": "175:8591",
+    "name": "Product Detail",
+    "request": "Product detail page with images, price, options and reviews."
+  },
+  {
+    "id": "contact",
+    "node_id": "175:5320",
+    "name": "Contact Us",
+    "request": "Contact page with a form and company details."
+  },
+  {
+    "id": "waitlist",
+    "node_id": "175:6058",
+    "name": "Waitlist",
+    "request": "Waitlist signup page with a hero form."
+  },
+  {
+    "id": "article",
+    "node_id": "175:6877",
+    "name": "Article",
+    "request": "Article page with a title, body text and related cards."
+  },
+  {
+    "id": "home",
+    "node_id": "175:4613",
+    "name": "Home Page",
+    "request": "Home page with a hero, sections and a footer."
+  }
+]

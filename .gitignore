@@ -28,3 +28,6 @@ Thumbs.db
 
 # --- compiled bundles written by `contextslice compile --out` ---
 out/
+
+# --- logs ---
+*.log

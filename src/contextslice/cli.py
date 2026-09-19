@@ -327,6 +327,111 @@ def explain(
     console.print(table)
 
 
+@app.command(name="eval")
+def eval_command(
+    budgets: Annotated[str, typer.Option(help="Comma-separated budgets for F/S/C.")] = "1000,2000",
+    reps: Annotated[int, typer.Option(help="Repetitions per (task, arm, budget).")] = 1,
+    tasks: Annotated[int, typer.Option(help="Use only the first N tasks (0 = all).")] = 0,
+    arms: Annotated[str, typer.Option(help="Comma-separated subset of N,F,S,C,U.")] = "N,F,S,C,U",
+    model: Annotated[str, typer.Option(help="Ollama model name.")] = "qwen2.5-coder:7b",
+    out: Annotated[Path, typer.Option(help="Run directory.")] = Path("eval/runs/latest"),
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Build contexts and prompts only; no generation.")
+    ] = False,
+    typecheck: Annotated[bool, typer.Option(help="Run tsc over the generated files.")] = True,
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+) -> None:
+    """Generate implementations under each arm and score them (see docs/ROADMAP.md)."""
+    from contextslice.eval.ollama_client import OllamaClient, ResponseCache
+    from contextslice.eval.runner import RunConfig, run
+    from contextslice.eval.tasks import load_tasks
+
+    store = SnapshotStore(snapshots_dir)
+    manifest = store.latest()
+    if manifest is None:
+        console.print("[red]No snapshot found.[/red] Run `contextslice ingest` first.")
+        raise typer.Exit(code=1)
+
+    with console.status("Building IR and graph..."):
+        design = build_design_file(store.load_document(manifest), sds_dir)
+        graph = build_graph(design)
+
+    task_list = load_tasks()
+    if tasks:
+        task_list = task_list[:tasks]
+    config = RunConfig(
+        model=model,
+        budgets=[int(b) for b in budgets.split(",") if b.strip()],
+        reps=reps,
+        arms=tuple(a.strip() for a in arms.split(",") if a.strip()),
+        task_ids=[t.id for t in task_list],
+        dry_run=dry_run,
+        typecheck=typecheck,
+    )
+    samples = run(
+        design,
+        graph,
+        task_list,
+        config,
+        out,
+        default_counter(),
+        sds_dir,
+        OllamaClient(),
+        ResponseCache(Path("eval/cache")),
+        log=lambda message: console.print(message, markup=False, highlight=False),
+    )
+    _render_eval_summary(samples, dry_run)
+    console.print(f"\nresults written to {out}")
+
+
+def _render_eval_summary(samples: list, dry_run: bool) -> None:
+    from collections import defaultdict
+
+    groups: dict[tuple[str, int | None], list] = defaultdict(list)
+    for sample in samples:
+        groups[(sample.arm, sample.budget)].append(sample)
+
+    def mean(values: list[float | None]) -> str:
+        real = [v for v in values if v is not None]
+        return f"{sum(real) / len(real):.2f}" if real else "-"
+
+    table = Table(title="Per-arm means" + (" (dry run: prompts only)" if dry_run else ""))
+    for column in ("arm", "B", "n", "ctx tokens", "prompt tokens"):
+        table.add_column(column, justify="right")
+    if not dry_run:
+        for column in ("reuse recall", "token rate", "tsc pass", "out tokens", "prompt s", "gen s"):
+            table.add_column(column, justify="right")
+    for (arm, budget), group in sorted(groups.items(), key=lambda kv: (kv[0][0], kv[0][1] or 0)):
+        row = [
+            arm,
+            str(budget or "-"),
+            str(len(group)),
+            mean([s.context_tokens for s in group]),
+            mean([s.prompt_tokens or s.prompt_tokens_estimate for s in group]),
+        ]
+        if not dry_run:
+            scored = [s for s in group if s.extracted]
+            row += [
+                mean([s.reuse_matched / s.reuse_expected for s in scored if s.reuse_expected]),
+                mean(
+                    [
+                        s.variable_refs / (s.variable_refs + s.hardcoded_hex + s.hardcoded_px)
+                        for s in scored
+                        if s.variable_refs + s.hardcoded_hex + s.hardcoded_px
+                    ]
+                ),
+                mean([float(s.tsc_pass) for s in scored if s.tsc_checked]),
+                mean([s.output_tokens for s in scored]),
+                mean([s.prompt_seconds for s in scored]),
+                mean([s.output_seconds for s in scored]),
+            ]
+        table.add_row(*row)
+    console.print(table)
+
+
 def _render_ledger(result: CompileResult) -> None:
     table = Table(title=f"Token ledger  (tokenizer: {result.counter_name})")
     table.add_column("after stage")
