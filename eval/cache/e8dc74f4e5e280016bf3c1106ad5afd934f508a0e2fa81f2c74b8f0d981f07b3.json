@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T03:21:25+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Article\" screen as a React component. Article page with a title, body text and related cards.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React from 'react';\nimport { Box, Heading, Text, Card, Grid } from 'primitives';\nimport { Icon } from 'icons';\nimport { Image } from 'images';\n\nexport default function Screen() {\n  return (\n    <Box padding=\"var(--sds-size-space-400)\">\n      <Heading level={1}>Article Title</Heading>\n      <Text style={{ marginTop: 'var(--sds-size-space-200)' }}>\n        This is the body text of the article. It provides detailed information and insights on the topic.\n      </Text>\n      <Grid columns=\"1fr 1fr\" gap=\"var(--sds-size-space-400)\" style={{ marginTop: 'var(--sds-size-space-400)' }}>\n        <Card>\n          <Image src=\"/path/to/image1.jpg\" alt=\"Related Image 1\" />\n          <Heading level={3}>Related Card 1</Heading>\n          <Text>Short description of related card 1.</Text>\n        </Card>\n        <Card>\n          <Image src=\"/path/to/image2.jpg\" alt=\"Related Image 2\" />\n          <Heading level={3}>Related Card 2</Heading>\n          <Text>Short description of related card 2.</Text>\n        </Card>\n      </Grid>\n    </Box>\n  );\n}\n```",
+  "prompt_tokens": 243,
+  "output_tokens": 287,
+  "load_seconds": 0.0083121,
+  "prompt_seconds": 9.226012,
+  "output_seconds": 34.450574,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

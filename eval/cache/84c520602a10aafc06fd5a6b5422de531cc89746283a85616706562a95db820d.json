@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T02:52:40+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Contact Us\" screen as a React component. Contact page with a form and company details.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React, { useState } from 'react';\nimport { Box, Button, Form, Input, Text, VStack } from 'primitives';\nimport { CompanyLogo } from 'images';\nimport { EmailIcon, PhoneIcon } from 'icons';\n\nexport default function Screen() {\n  const [name, setName] = useState('');\n  const [email, setEmail] = useState('');\n  const [message, setMessage] = useState('');\n\n  const handleSubmit = (event: React.FormEvent) => {\n    event.preventDefault();\n    // Handle form submission logic here\n    console.log('Form submitted:', { name, email, message });\n  };\n\n  return (\n    <Box style={{ padding: 'var(--sds-size-space-400)' }}>\n      <VStack spacing=\"var(--sds-size-space-400)\">\n        <Box>\n          <CompanyLogo />\n          <Text style={{ fontSize: 'var(--sds-size-font-400)', fontWeight: 'bold', marginTop: 'var(--sds-size-space-200)' }}>\n            Contact Us\n          </Text>\n        </Box>\n        <Form onSubmit={handleSubmit}>\n          <VStack spacing=\"var(--sds-size-space-200)\">\n            <Input\n              type=\"text\"\n              placeholder=\"Name\"\n              value={name}\n              onChange={(e) => setName(e.target.value)}\n              style={{ padding: 'var(--sds-size-space-100)' }}\n            />\n            <Input\n              type=\"email\"\n              placeholder=\"Email\"\n              value={email}\n              onChange={(e) => setEmail(e.target.value)}\n              style={{ padding: 'var(--sds-size-space-100)' }}\n            />\n            <Input\n              as=\"textarea\"\n              placeholder=\"Message\"\n              value={message}\n              onChange={(e) => setMessage(e.target.value)}\n              style={{ padding: 'var(--sds-size-space-100)' }}\n            />\n            <Button type=\"submit\" style={{ padding: 'var(--sds-size-space-100)' }}>\n              Submit\n            </Button>\n          </VStack>\n        </Form>\n        <VStack spacing=\"var(--sds-size-space-200)\">\n          <Box style={{ display: 'flex', alignItems: 'center' }}>\n            <EmailIcon style={{ marginRight: 'var(--sds-size-space-100)' }} />\n            <Text style={{ fontSize: 'var(--sds-size-font-300)' }}>support@example.com</Text>\n          </Box>\n          <Box style={{ display: 'flex', alignItems: 'center' }}>\n            <PhoneIcon style={{ marginRight: 'var(--sds-size-space-100)' }} />\n            <Text style={{ fontSize: 'var(--sds-size-font-300)' }}>+1 123 456 7890</Text>\n          </Box>\n        </VStack>\n      </VStack>\n    </Box>\n  );\n}\n```",
+  "prompt_tokens": 241,
+  "output_tokens": 628,
+  "load_seconds": 0.0075906,
+  "prompt_seconds": 9.985435,
+  "output_seconds": 83.678239,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

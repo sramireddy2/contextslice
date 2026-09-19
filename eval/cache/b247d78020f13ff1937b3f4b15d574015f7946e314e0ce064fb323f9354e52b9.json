@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T00:46:03+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Landing Page\" screen as a React component. Landing page with a hero, feature panels and a footer.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React from 'react';\nimport { Box, Button, Flex, Heading, Image, Text } from 'primitives';\nimport { Layout, Hero, FeaturePanel, Footer } from 'compositions';\nimport { sdsIcons } from 'icons';\nimport { sdsImages } from 'images';\n\nexport default function Screen() {\n  return (\n    <Layout>\n      <Hero\n        title=\"Welcome to Simple Design System\"\n        subtitle=\"Empower your projects with a consistent and beautiful design language.\"\n        image={sdsImages.heroImage}\n        icon={sdsIcons.heroIcon}\n      />\n      <Flex direction=\"column\" gap=\"var(--sds-size-space-400)\">\n        <FeaturePanel\n          title=\"Responsive Design\"\n          description=\"Our components are designed to adapt to any screen size, ensuring a seamless user experience.\"\n          icon={sdsIcons.responsiveIcon}\n        />\n        <FeaturePanel\n          title=\"Accessibility\"\n          description=\"We prioritize accessibility, making sure our components are usable by everyone.\"\n          icon={sdsIcons.accessibilityIcon}\n        />\n        <FeaturePanel\n          title=\"Customization\"\n          description=\"Easily customize our components to fit your brand and design needs.\"\n          icon={sdsIcons.customizationIcon}\n        />\n      </Flex>\n      <Footer\n        links={[\n          { label: 'Home', href: '/' },\n          { label: 'Docs', href: '/docs' },\n          { label: 'Contact', href: '/contact' },\n        ]}\n        copyright=\"© 2023 Simple Design System. All rights reserved.\"\n      />\n    </Layout>\n  );\n}\n```",
+  "prompt_tokens": 245,
+  "output_tokens": 343,
+  "load_seconds": 0.0074159,
+  "prompt_seconds": 10.526334,
+  "output_seconds": 47.58687,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

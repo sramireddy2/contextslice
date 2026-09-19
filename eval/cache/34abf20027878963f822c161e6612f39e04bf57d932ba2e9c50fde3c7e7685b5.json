@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T03:45:57+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Home Page\" screen as a React component. Home page with a hero, sections and a footer.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React from 'react';\nimport { Box, Button, Flex, Heading, Image, Text, VStack } from 'primitives';\nimport { Layout, Hero, Section, Footer } from 'compositions';\n\nexport default function Screen() {\n  return (\n    <Layout>\n      <Hero>\n        <Box>\n          <Heading as=\"h1\">Welcome to Simple Design System</Heading>\n          <Text>Explore our components and build beautiful interfaces.</Text>\n          <Button>Get Started</Button>\n        </Box>\n      </Hero>\n      <Section title=\"Features\">\n        <VStack spacing=\"var(--sds-size-space-400)\">\n          <Box>\n            <Image src=\"/icons/icon1.svg\" alt=\"Icon 1\" />\n            <Heading as=\"h2\">Iconography</Heading>\n            <Text>Consistent and scalable icons for your design.</Text>\n          </Box>\n          <Box>\n            <Image src=\"/icons/icon2.svg\" alt=\"Icon 2\" />\n            <Heading as=\"h2\">Typography</Heading>\n            <Text>Beautiful and readable typography for all text elements.</Text>\n          </Box>\n          <Box>\n            <Image src=\"/icons/icon3.svg\" alt=\"Icon 3\" />\n            <Heading as=\"h2\">Layout</Heading>\n            <Text>Responsive and flexible layout components.</Text>\n          </Box>\n        </VStack>\n      </Section>\n      <Footer>\n        <Text>© 2023 Simple Design System. All rights reserved.</Text>\n      </Footer>\n    </Layout>\n  );\n}\n```",
+  "prompt_tokens": 243,
+  "output_tokens": 337,
+  "load_seconds": 0.0123987,
+  "prompt_seconds": 11.946358,
+  "output_seconds": 51.786697,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

@@ -1,0 +1,27 @@
+{
+  "model": "qwen2.5-coder:7b",
+  "budgets": [
+    1000,
+    2000
+  ],
+  "reps": 1,
+  "arms": [
+    "N",
+    "F",
+    "S",
+    "C",
+    "U"
+  ],
+  "task_ids": [
+    "about",
+    "landing",
+    "pricing",
+    "product",
+    "contact",
+    "waitlist",
+    "article",
+    "home"
+  ],
+  "dry_run": false,
+  "typecheck": true
+}

@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T01:33:21+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Product Detail\" screen as a React component. Product detail page with images, price, options and reviews.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React from 'react';\nimport { Box, Image, Text, Button, Rating, Grid, Column } from 'primitives';\nimport { Card, Section, Header, Footer } from 'compositions';\nimport { Container, Row } from 'layout';\nimport { HeartIcon, ShoppingCartIcon } from 'icons';\nimport { productDetail } from 'images';\n\nexport default function Screen() {\n  return (\n    <Container>\n      <Row>\n        <Column>\n          <Card>\n            <Image src={productDetail} alt=\"Product Image\" />\n          </Card>\n        </Column>\n        <Column>\n          <Section>\n            <Header>\n              <Text variant=\"h1\">Product Name</Text>\n            </Header>\n            <Section>\n              <Text variant=\"body1\">Price: $99.99</Text>\n            </Section>\n            <Section>\n              <Text variant=\"body1\">Options:</Text>\n              <Grid columns=\"1fr 1fr\" gap=\"var(--sds-size-space-200)\">\n                <Button variant=\"primary\">Option 1</Button>\n                <Button variant=\"primary\">Option 2</Button>\n              </Grid>\n            </Section>\n            <Section>\n              <Text variant=\"body1\">Reviews:</Text>\n              <Rating value={4.5} />\n              <Text variant=\"body2\">5 out of 5 stars</Text>\n            </Section>\n            <Footer>\n              <Button variant=\"primary\" startIcon={<HeartIcon />}>Save</Button>\n              <Button variant=\"primary\" startIcon={<ShoppingCartIcon />}>Add to Cart</Button>\n            </Footer>\n          </Section>\n        </Column>\n      </Row>\n    </Container>\n  );\n}\n```",
+  "prompt_tokens": 244,
+  "output_tokens": 368,
+  "load_seconds": 0.0067357,
+  "prompt_seconds": 11.524461,
+  "output_seconds": 52.380852,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

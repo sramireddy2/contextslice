@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T01:08:56+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Pricing\" screen as a React component. Pricing page with plan cards and a FAQ.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React from 'react';\nimport { Box, Button, Card, Flex, Heading, Paragraph, Text } from 'primitives';\nimport { FaqItem } from 'compositions';\nimport { Grid } from 'layout';\nimport { CheckCircleIcon } from 'icons';\n\nconst PricingPlan = ({ title, description, features, price }) => (\n  <Card>\n    <Heading level={3}>{title}</Heading>\n    <Paragraph>{description}</Paragraph>\n    <Box style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-size-space-200)' }}>\n      {features.map((feature, index) => (\n        <Box key={index} style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-size-space-100)' }}>\n          <CheckCircleIcon style={{ color: 'var(--sds-color-success)' }} />\n          <Text>{feature}</Text>\n        </Box>\n      ))}\n    </Box>\n    <Button variant=\"primary\">{price}</Button>\n  </Card>\n);\n\nconst Pricing = () => (\n  <Box style={{ padding: 'var(--sds-size-space-600)' }}>\n    <Heading level={1}>Pricing</Heading>\n    <Paragraph style={{ maxWidth: 'var(--sds-size-max-width-1200)', margin: 'var(--sds-size-space-400) auto 0' }}>\n      Choose the plan that best fits your needs.\n    </Paragraph>\n    <Grid columns={3} gap=\"var(--sds-size-space-400)\">\n      <PricingPlan\n        title=\"Basic\"\n        description=\"For small teams\"\n        features={['10 users', '100GB storage', 'Basic support']}\n        price=\"$19/month\"\n      />\n      <PricingPlan\n        title=\"Pro\"\n        description=\"For growing teams\"\n        features={['50 users', '500GB storage', 'Priority support', 'Advanced features']}\n        price=\"$49/month\"\n      />\n      <PricingPlan\n        title=\"Enterprise\"\n        description=\"For large organizations\"\n        features={['Unlimited users', 'Unlimited storage', '24/7 support', 'Custom features']}\n        price=\"$99/month\"\n      />\n    </Grid>\n    <Box style={{ marginTop: 'var(--sds-size-space-600)' }}>\n      <Heading level={2}>FAQ</Heading>\n      <FaqItem question=\"What is the difference between the plans?\" answer=\"The Basic plan is for small teams, the Pro plan is for growing teams, and the Enterprise plan is for large organizations.\" />\n      <FaqItem question=\"How do I upgrade my plan?\" answer=\"You can upgrade your plan by logging into your account and selecting the plan that best fits your needs.\" />\n      <FaqItem question=\"What is your refund policy?\" answer=\"We offer a 30-day money-back guarantee. If you are not satisfied with your plan, you can request a refund within 30 days of signing up.\" />\n    </Box>\n  </Box>\n);\n\nexport default function Screen() {\n  return <Pricing />;\n}\n```",
+  "prompt_tokens": 241,
+  "output_tokens": 670,
+  "load_seconds": 0.0115621,
+  "prompt_seconds": 11.141328,
+  "output_seconds": 92.809121,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

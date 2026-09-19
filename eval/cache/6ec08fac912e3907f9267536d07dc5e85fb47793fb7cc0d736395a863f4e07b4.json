@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T03:08:25+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"Waitlist\" screen as a React component. Waitlist signup page with a hero form.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React, { useState } from 'react';\nimport { Box, Button, Form, Input, Text } from 'primitives';\nimport { Layout } from 'layout';\nimport { Icon } from 'icons';\n\nexport default function Screen() {\n  const [email, setEmail] = useState('');\n\n  const handleSubmit = (e: React.FormEvent) => {\n    e.preventDefault();\n    // Handle form submission logic here\n  };\n\n  return (\n    <Layout>\n      <Box\n        style={{\n          display: 'flex',\n          flexDirection: 'column',\n          alignItems: 'center',\n          justifyContent: 'center',\n          height: '100vh',\n          gap: 'var(--sds-size-space-400)',\n        }}\n      >\n        <Box\n          style={{\n            display: 'flex',\n            flexDirection: 'column',\n            alignItems: 'center',\n            gap: 'var(--sds-size-space-200)',\n          }}\n        >\n          <Icon name=\"waitlist\" size=\"large\" />\n          <Text variant=\"headline\">Join our waitlist</Text>\n          <Text variant=\"body\">Be the first to know when we launch.</Text>\n        </Box>\n        <Form onSubmit={handleSubmit}>\n          <Input\n            type=\"email\"\n            placeholder=\"Enter your email\"\n            value={email}\n            onChange={(e) => setEmail(e.target.value)}\n            style={{\n              width: '100%',\n              maxWidth: '400px',\n              padding: 'var(--sds-size-space-200)',\n              border: '1px solid var(--sds-color-border)',\n              borderRadius: 'var(--sds-size-radius-400)',\n            }}\n          />\n          <Button type=\"submit\" style={{ width: '100%', maxWidth: '400px' }}>\n            Join Waitlist\n          </Button>\n        </Form>\n      </Box>\n    </Layout>\n  );\n}\n```",
+  "prompt_tokens": 241,
+  "output_tokens": 406,
+  "load_seconds": 0.0053952,
+  "prompt_seconds": 12.535427,
+  "output_seconds": 67.296176999,
+  "done_reason": "stop",
+  "cached": false
+ }
+}
