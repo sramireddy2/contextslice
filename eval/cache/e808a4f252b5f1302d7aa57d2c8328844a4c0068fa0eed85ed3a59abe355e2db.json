@@ -1,0 +1,24 @@
+{
+ "stored_at": "2026-09-19T00:04:31+00:00",
+ "options": {
+  "num_ctx": 8192,
+  "temperature": 0.2,
+  "num_predict": 2000,
+  "seed": 1000
+ },
+ "prompt": {
+  "system": "You are a senior frontend engineer working in the Simple Design System (SDS) codebase: React 18 + TypeScript. You implement screens by composing the design system's existing components.",
+  "user": "Implement the \"About\" screen as a React component. Marketing page with a header, hero, two card grids and a footer.\n\nRules:\n1. Reply with exactly one fenced ```tsx code block containing ONE complete file that ends with `export default function Screen()`.\n2. Import design-system components only from these modules: \"primitives\", \"compositions\", \"layout\", \"icons\", \"images\". Import hooks from \"react\". No other imports.\n3. Reuse the design-system components named in the design context instead of re-implementing them with plain HTML elements.\n4. For colors, spacing and typography use the CSS variables from the design context, e.g. style={{ gap: \"var(--sds-size-space-400)\" }}. Do not hardcode a hex color or pixel value that has a token.\n5. Text content must match the design context exactly.\n\nDesign context: none is available. Implement a reasonable screen from its name.\n"
+ },
+ "generation": {
+  "model": "qwen2.5-coder:7b",
+  "text": "```tsx\nimport React from 'react';\nimport { Box, Heading, Text, Card, Grid, Footer } from 'primitives';\nimport { Container } from 'layout';\nimport { Logo } from 'icons';\nimport { SimpleLogo } from 'images';\n\nexport default function Screen() {\n  return (\n    <Box>\n      <Container>\n        <Box style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>\n          <Logo />\n          <Heading level={1} style={{ marginLeft: '1rem' }}>\n            Simple Design System\n          </Heading>\n        </Box>\n      </Container>\n\n      <Container style={{ padding: 'var(--sds-size-space-400)' }}>\n        <Text style={{ textAlign: 'center', marginBottom: 'var(--sds-size-space-400)' }}>\n          Welcome to the Simple Design System. A collection of reusable components and styles to help you build beautiful and consistent user interfaces.\n        </Text>\n      </Container>\n\n      <Container style={{ padding: 'var(--sds-size-space-400)' }}>\n        <Grid columns={2} gap=\"var(--sds-size-space-400)\">\n          <Card title=\"Components\">\n            <Text>\n              A library of pre-designed components that follow the design system's guidelines. Use them to build your UI without worrying about consistency.\n            </Text>\n          </Card>\n          <Card title=\"Styles\">\n            <Text>\n              A set of CSS variables and utility classes that ensure your application has a consistent look and feel. No more hardcoding styles!\n            </Text>\n          </Card>\n        </Grid>\n      </Container>\n\n      <Footer>\n        <SimpleLogo />\n        <Text style={{ marginLeft: '1rem' }}>\n          &copy; 2023 Simple Design System. All rights reserved.\n        </Text>\n      </Footer>\n    </Box>\n  );\n}\n```",
+  "prompt_tokens": 246,
+  "output_tokens": 407,
+  "load_seconds": 7.9701907,
+  "prompt_seconds": 11.372152,
+  "output_seconds": 52.305792,
+  "done_reason": "stop",
+  "cached": false
+ }
+}

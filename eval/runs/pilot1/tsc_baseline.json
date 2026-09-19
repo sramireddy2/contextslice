@@ -1,0 +1,44 @@
+[
+ {
+  "file": "src/figma/primitives/tag/Tag.figma.ts",
+  "line": 10,
+  "code": "TS6133",
+  "message": "'onRemove' is declared but its value is never read."
+ },
+ {
+  "file": "src/ui/primitives/Button/Button.tsx",
+  "line": 27,
+  "code": "TS2322",
+  "message": "Type '{ children: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ... 228 more ... | undefined; ... 92 more ...; onHoverChange?: ((isHovering: boolean) => void) | undefined; }' is not assignable to type 'LinkProps'."
+ },
+ {
+  "file": "src/ui/primitives/Button/Button.tsx",
+  "line": 35,
+  "code": "TS2322",
+  "message": "Type '{ children: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ... 46 more ... | undefined; ... 92 more ...; onHoverChange?: ((isHovering: boolean) => void) | undefined; }' is not assignable to type 'ButtonProps'."
+ },
+ {
+  "file": "src/ui/primitives/Button/Button.tsx",
+  "line": 73,
+  "code": "TS2322",
+  "message": "Type '{ children: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ... 228 more ... | undefined; ... 92 more ...; onHoverChange?: ((isHovering: boolean) => void) | undefined; }' is not assignable to type 'LinkProps'."
+ },
+ {
+  "file": "src/ui/primitives/Button/Button.tsx",
+  "line": 81,
+  "code": "TS2322",
+  "message": "Type '{ children: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ... 46 more ... | undefined; ... 92 more ...; onHoverChange?: ((isHovering: boolean) => void) | undefined; }' is not assignable to type 'ButtonProps'."
+ },
+ {
+  "file": "src/ui/utils/AnchorOrButton.tsx",
+  "line": 36,
+  "code": "TS2322",
+  "message": "Type '{ children: ((string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | ((values: LinkRenderProps & { ...; }) => ReactNode)) & (string | ... 4 more ... | ReactPortal)) | null | undefined; ... 110 more ...; href?: string | undefined; } | { ...; }' is not assignable to type 'IntrinsicAttributes & LinkProps & RefAttributes<HTMLAnchorElement>'."
+ },
+ {
+  "file": "src/ui/utils/AnchorOrButton.tsx",
+  "line": 44,
+  "code": "TS2322",
+  "message": "Type '{ children: ((string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | ((values: ButtonRenderProps & { ...; }) => ReactNode)) & (string | ... 4 more ... | ReactPortal)) | null | undefined; ... 110 more ...; href?: string | undefined; } | { ...; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLButtonElement>'."
+ }
+]

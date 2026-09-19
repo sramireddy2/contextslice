@@ -1,0 +1,17 @@
+{
+  "model": "qwen2.5-coder:7b",
+  "budgets": [
+    1000
+  ],
+  "reps": 1,
+  "arms": [
+    "N",
+    "C",
+    "U"
+  ],
+  "task_ids": [
+    "about"
+  ],
+  "dry_run": false,
+  "typecheck": true
+}
