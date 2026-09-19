@@ -55,6 +55,24 @@ def raw_elements(row: Row) -> float | None:
     return float(row["raw_elements"]) if row.get("extracted") else None
 
 
+def tsc_missing(row: Row) -> float | None:
+    """Hallucinated or un-imported names: the most context-sensitive type error."""
+    return float(row["tsc_errors"].get("missing", 0)) if row.get("tsc_checked") else None
+
+
+def tsc_type(row: Row) -> float | None:
+    """Wrong props/values on real components."""
+    return float(row["tsc_errors"].get("type", 0)) if row.get("tsc_checked") else None
+
+
+def output_tokens(row: Row) -> float | None:
+    return float(row["output_tokens"]) if row.get("generated") else None
+
+
+def truncated(row: Row) -> float | None:
+    return float(row["truncated"]) if row.get("generated") else None
+
+
 METRICS: dict[str, Metric] = {
     "reuse_recall": reuse_recall,
     "reuse_precision": reuse_precision,
@@ -62,9 +80,22 @@ METRICS: dict[str, Metric] = {
     "missed_tokens": missed_tokens,
     "raw_elements": raw_elements,
     "tsc_pass": tsc_pass,
+    "tsc_missing": tsc_missing,
+    "tsc_type": tsc_type,
     "prompt_tokens": prompt_tokens,
+    "output_tokens": output_tokens,
+    "truncated": truncated,
     "total_seconds": total_seconds,
 }
+PAIRED_METRICS = (
+    "reuse_recall",
+    "reuse_precision",
+    "tsc_missing",
+    "tsc_type",
+    "token_rate",
+    "prompt_tokens",
+    "total_seconds",
+)
 
 ArmKey = tuple[str, int | None]
 
@@ -200,7 +231,7 @@ def render_markdown(rows: list[Row], title: str) -> str:
     lines.append("| comparison | metric | tasks | mean diff | 95% CI | wins/losses |")
     lines.append("|---|---|---|---|---|---|")
     for arm_a, arm_b in default_comparisons(rows):
-        for metric in ("reuse_recall", "token_rate", "tsc_pass", "prompt_tokens", "total_seconds"):
+        for metric in PAIRED_METRICS:
             result = paired(rows, metric, arm_a, arm_b)
             if result is None:
                 continue

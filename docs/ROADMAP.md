@@ -1,6 +1,18 @@
 # Roadmap: 7-day MVP
 
 Each step ends with something runnable from the CLI, a passing test suite, and a pushed commit.
+**Status (2026-09-19): all seven days delivered.** What remains is listed under *Next* and
+*Stretch* below.
+
+## Next (cheap, in order of value)
+
+1. A second repetition of the evaluation (`uv run contextslice eval --reps 2 --out eval/runs/full-r2`,
+   ~3 h of machine time) to estimate seed variance.
+2. The "no Code Connect" regime: the same matrix with substitution off (`compile --no-substitute`),
+   where budgets of 4k-8k actually bind and where most real design systems live.
+3. Emit component lines in React prop vocabulary where the Code Connect template's `getEnum` /
+   `getString` calls make the mapping explicit, to stop the model copying Figma prop names.
+4. Tighter budgets (500) and multi-screen targets to test whether PageRank ever beats depth decay.
 
 | Day | Step | Deliverable | CS concept |
 |---|---|---|---|

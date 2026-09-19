@@ -29,11 +29,41 @@ It builds a typed dependency graph of the design and runs a pipeline of analysis
 
 There are deliberately **no embeddings and no vector database** anywhere in the selection path.
 
+## Results in one table
+
+Real data: Figma's Simple Design System (18,911 nodes). Target: the `Examples/About` desktop
+screen (301 nodes). Exact tokens under the Qwen2.5-Coder tokenizer.
+
+| Stage | Tokens | vs raw |
+|---|---|---|
+| Raw Figma JSON of the screen | 1,327,910 | 100% |
+| P0 normalize (allowlist, drop editor-only fields) | 53,152 | 4.0% |
+| Outline format (one line per node) | 7,022 | 0.53% |
+| P4 Code Connect substitution | 3,278 | 0.25% |
+| P5 structural dedupe | 2,146 | 0.16% |
+| P7 budgeted selection, B = 1,000 | 971 | 0.07% |
+
+Generated implementations (8 screens, local 7B model, same prompt, same budget):
+
+| Context given to the model | Component reuse recall | Precision |
+|---|---|---|
+| none | 0.07 | 0.16 |
+| flat simplified outline, truncated to 1,000 tokens | 0.11 | 0.23 |
+| **ContextSlice, 1,000 tokens** | **0.48** | **0.89** |
+| ContextSlice, unbudgeted (2,224 tokens) | 0.55 | 0.89 |
+
+ContextSlice beat the flat outline on all 8 screens at both budgets (+0.37 recall, 95% CI
+[+0.26, +0.49]). Half the tokens bought almost all of the benefit. PageRank relevance did *not*
+measurably beat plain depth-decay at these budgets, and every arm failed strict type-checking:
+the small model copies Figma prop names onto React components. Full tables, the pre-registered
+comparisons and the limitations are in [docs/eval.md](docs/eval.md).
+
 ## Status
 
-A 7-day MVP build, in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan,
-[docs/adr/](docs/adr/) for the reasoning behind each major decision, and
-[docs/census.md](docs/census.md) for measurements of the corpus.
+A 7-day MVP build, complete. See [docs/ROADMAP.md](docs/ROADMAP.md) for the plan and what is
+left, [docs/adr/](docs/adr/) for the reasoning behind each major decision,
+[docs/census.md](docs/census.md) for measurements of the corpus and of each pass, and
+[docs/eval.md](docs/eval.md) for the evaluation.
 
 - [x] Ingest: one-shot Figma snapshot, committed for offline reproducibility
 - [x] `stats`: census of the file (18,911 nodes; one editor-only field is 57% of all bytes)
@@ -44,7 +74,22 @@ A 7-day MVP build, in progress. See [docs/ROADMAP.md](docs/ROADMAP.md) for the p
       retained tokens per subtree, shared vs private definitions)
 - [x] Relevance (personalized PageRank, BFS-decay ablation) + budgeted selection (lazy
       cost-benefit greedy with dependency-aware costs) + verifier (`compile --budget B`)
-- [ ] Evaluation with local models
+- [x] Evaluation with a local model: 5 arms x 8 screens x 2 budgets, cached and committed
+
+## Demo (3 minutes, no Figma account or model needed)
+
+```bash
+uv run contextslice stats                              # the file: where the bytes go
+uv run contextslice slice --name "about desktop"       # the dependency slice
+uv run contextslice compile --name "about desktop"     # the pass ledger + bundle
+uv run contextslice compile --name "about desktop" --budget 1000 --show
+uv run contextslice explain --name "about desktop"     # retained tokens, shared vs private
+uv run contextslice report --run eval/runs/full-r1     # the evaluation tables
+```
+
+Reproducing the generations themselves needs [Ollama](https://ollama.com) with
+`qwen2.5-coder:7b` and `npm ci` inside `vendor/sds`; every response is cached under
+`eval/cache/`, so `contextslice eval` re-scores without regenerating.
 
 ## Quickstart
 
