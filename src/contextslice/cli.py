@@ -614,3 +614,7 @@ def _render_frames(census: Census, top: int) -> None:
 
 def _percent(part: int, whole: int) -> str:
     return f"{100 * part / whole:.1f}%" if whole else "n/a"
+
+
+if __name__ == "__main__":  # allows `python -m contextslice.cli` (no console-script lock)
+    app()

@@ -60,3 +60,23 @@ in each run's `tsc_baseline.json`.
 A generation takes 2–5 minutes on this machine, so: a pilot (1 task, arms N/C/U) to validate
 the pipeline end to end, then the full matrix of 8 tasks x (N, F@2, S@2, C@2, U) = 64
 generations per repetition, run overnight.
+
+## Pilot (1 task, About screen; 2026-09-18)
+
+| Arm | matched components (of 16) | precision | tsc errors |
+|---|---|---|---|
+| N | 2 | 2/9 | 8 missing |
+| C @1000 | 6 | 6/7 | 11 missing |
+| U | 7 | 7/7 | 17 missing, 6 type |
+
+Two qualitative findings before any statistics:
+
+1. Without context the model invents components (`Box`, `Heading`, `Grid`, `Logo`), all caught
+   by the type checker as *missing*. With context it names real components with the right text.
+2. With context, the 7B model copies **Figma** property names straight onto React components
+   (`<Header Platform="Desktop">`, `HasSubtitle={true}`) instead of translating them through the
+   JSX examples in COMPONENTS, and it uses components it never imported. Both show up as *missing*
+   and *type* errors and grow with the amount of context. This is a real weakness of the bundle
+   format for a small model, and a concrete direction for a next version of the emitter: render
+   component lines in the mapped React prop vocabulary where the template makes the mapping
+   explicit, and repeat the import line next to first use.
