@@ -387,6 +387,23 @@ def eval_command(
     console.print(f"\nresults written to {out}")
 
 
+@app.command()
+def report(
+    run: Annotated[Path, typer.Option(help="Run directory with results.jsonl.")] = Path(
+        "eval/runs/latest"
+    ),
+) -> None:
+    """Per-arm means and paired comparisons for a finished run; also writes report.md."""
+    from contextslice.eval.report import render_markdown
+    from contextslice.eval.runner import load_results
+
+    rows = load_results(run)
+    markdown = render_markdown(rows, f"ContextSlice evaluation: {run.name}")
+    (run / "report.md").write_text(markdown, encoding="utf-8", newline="\n")
+    console.print(markdown, markup=False, highlight=False)
+    console.print(f"\nwritten to {run / 'report.md'}")
+
+
 def _render_eval_summary(samples: list, dry_run: bool) -> None:
     from collections import defaultdict
 
