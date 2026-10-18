@@ -22,6 +22,7 @@ It builds a typed dependency graph of the design and runs a pipeline of analysis
 | Backward slice from the target frame | graph reachability over component + variable edges | program slicing |
 | Alias-chain collapse | `button/bg -> brand/500 -> #2c2c2c` becomes one line | copy propagation |
 | Code Connect substitution | mapped instance subtree -> import + snippet + props | "signature, not body" |
+| Prop lowering | `Variant=Primary` -> `variant="primary"` through the template's own `getEnum` table; unread props dropped | lowering through an ABI |
 | Structural dedupe | Merkle + shape hashing of subtrees | value numbering / hash-consing |
 | Dominator analysis | "retained tokens": what dropping a node would actually free | heap-profiler retained size |
 | Relevance | personalized PageRank restarted at the target | - |
@@ -39,9 +40,9 @@ screen (301 nodes). Exact tokens under the Qwen2.5-Coder tokenizer.
 | Raw Figma JSON of the screen | 1,327,910 | 100% |
 | P0 normalize (allowlist, drop editor-only fields) | 53,152 | 4.0% |
 | Outline format (one line per node) | 7,022 | 0.53% |
-| P4 Code Connect substitution | 3,278 | 0.25% |
-| P5 structural dedupe | 2,146 | 0.16% |
-| P7 budgeted selection, B = 1,000 | 971 | 0.07% |
+| P4 Code Connect substitution + prop lowering | 2,967 | 0.22% |
+| P5 structural dedupe | 1,935 | 0.15% |
+| P7 budgeted selection, B = 1,000 | 948 | 0.07% |
 
 Generated implementations (8 screens, local 7B model, same prompt, same budget):
 
@@ -69,12 +70,15 @@ left, [docs/adr/](docs/adr/) for the reasoning behind each major decision,
 - [x] `stats`: census of the file (18,911 nodes; one editor-only field is 57% of all bytes)
 - [x] IR + typed dependency graph + `slice` (a 443-node page slices in ~2 ms)
 - [x] `compile`: exact token counting, outline emitter, Code Connect substitution, pass ledger
-      (a 1.33M-token page compiles to 3,254 tokens: 0.25% of raw)
+      (a 1.33M-token page compiles to 2,967 tokens: 0.22% of raw)
 - [x] Structural dedupe (Merkle digests, `xN` folding) + dominator analysis (`explain`:
       retained tokens per subtree, shared vs private definitions)
 - [x] Relevance (personalized PageRank, BFS-decay ablation) + budgeted selection (lazy
       cost-benefit greedy with dependency-aware costs) + verifier (`compile --budget B`)
 - [x] Evaluation with a local model: 5 arms x 8 screens x 2 budgets, cached and committed
+- [x] Prop lowering (P4b): instance lines speak React, not Figma (`<NavigationPill isSelected>
+      "Products"`), one consolidated IMPORTS block, layout patterns labelled so they are not
+      imported ([ADR-0005](docs/adr/0005-prop-lowering-through-code-connect-templates.md))
 
 ## Demo (3 minutes, no Figma account or model needed)
 

@@ -137,3 +137,49 @@ What the numbers say so far:
   the right trade against tree lines is exactly the kind of constant (`EXAMPLE_SHARE`) the
   evaluation should ablate; it is a documented number, not a tuned one.
 - SciPy became a dependency here: NetworkX's `pagerank` is implemented on top of it.
+
+# Prop lowering (Day 8, 2026-10-18)
+
+Diagnosis before building anything. `tsc` re-run on the 72 generations of `eval/runs/full-r1`,
+messages read rather than counted:
+
+| error in the ContextSlice arm (16 files) | count | cause |
+|---|---|---|
+| `platform`/`state` not assignable to `HeaderProps` | 133 | Figma-only props passed to a React component |
+| `"Start"` is not assignable to `"start" \| "center"` | 12 | Figma enum casing |
+| `Module "compositions" has no exported member CardGridContentList` | 9 | a layout pattern imported as a component |
+| `Cannot find name TextContentTitle` | 105 | a listed component used without its import |
+
+Vocabulary leakage, measured as Capitalised attributes on component tags in generated code:
+87 in 3 of 16 ContextSlice files, 41 in 1 of 16 BFS files, 73 in 1 of 8 unbudgeted files, 0 in
+the flat-outline and no-context arms (which never saw a `<Name ...>` line). On the TREE lines of
+the ContextSlice contexts there were 898 instance-property occurrences (51 distinct names), of
+which 733 are properties that some Code Connect template reads.
+
+The templates themselves (97 files): five helper calls in total (`getEnum` 86 call sites,
+`getString` 87, `getBoolean` 21, `getInstanceSwap` 12, `executeTemplate` 12) and four ways a
+value reaches the JSX (`renderProp`/`rp`, `name="${v}"`, bare `${v}`, `renderChildren(v)`).
+The static parser extracts 162 rules. Two templates name their component differently from
+their one import (`FormBox` -> `Form`, `Button` -> `ButtonDanger`) and are renamed; 11 are
+layout patterns (the six `CardGrid*`, the four `Page*`, `Dialog`). Four props sit on a wrapper
+element (`<Section padding=...>` around `Panel`) and are no longer attributed to the component.
+
+Effect on the About screen (`contextslice compile --name "about desktop"`):
+
+| Stage | before | after |
+|---|---|---|
+| P4 substitution (+ lowering) | 3,278 | 2,967 |
+| P5 dedupe, unbudgeted | 2,146 | 1,935 |
+| B=2,000, PageRank | 1,978 (72 of 76 lines, 0 repairs) | 1,847 (75 of 76, 0 repairs) |
+| B=1,000, PageRank | 971 (21 lines, 1 repair) | 948 (28 lines, 0 repairs) |
+| B=1,000, BFS decay | - | 907 (58 lines, 0 repairs) |
+
+The saving comes from dropped properties and the consolidated import block, net of three new
+legend lines. The repair count dropped because the selector now charges the one-time header and
+section costs to the first component; before that fix the toy `RICH` screen at B=197 landed at
+144 tokens after 9 repairs (and exposed an undo bug that left a component at the stub level
+under an omitted parent); it now lands at 189 with 0 repairs.
+
+A line now reads `<NavigationPill isSelected> "Products"` instead of
+`<NavigationPill Label="Products" State=Active>`, and `<Header>` instead of
+`<Header Platform=Desktop State=Default>`.

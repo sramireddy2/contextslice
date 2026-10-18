@@ -89,6 +89,28 @@ def test_value_tables_and_expressions_are_read_without_executing_anything(tmp_pa
     assert rules["Title"].role == "child"  # renderChildren(title)
 
 
+def test_a_prop_remembers_which_element_it_is_written_on(tmp_path) -> None:
+    (tmp_path / "Panel.figma.ts").write_text(
+        "// component=Panel\n"
+        'const padding = figma.selectedInstance.getEnum("Platform", { Desktop: "1600" });\n'
+        'const gap = figma.selectedInstance.getEnum("Platform", { Desktop: "1200" });\n'
+        "export default { imports: ['import { Panel } from \"compositions\";'],"
+        ' example: figma.code`<Section padding="${padding}"><Panel gap="${gap}" /></Section>` };\n',
+        encoding="utf-8",
+    )
+
+    template = load_template(tmp_path, CodeMapping("1", "Panel", "", "Panel.figma.ts"))
+
+    assert [(r.target, r.element) for r in template.rules] == [
+        ("padding", "Section"),
+        ("gap", "Panel"),
+    ]
+    batch = load_template(
+        TOY_SDS, CodeMapping("9:9", "IconStar", "", "src/figma/icons/Icons.figma.batch.ts")
+    )
+    assert all(rule.element is None for rule in batch.rules)  # `<${component}` is the component
+
+
 def test_a_name_that_is_not_exported_is_a_rename_or_a_pattern(tmp_path) -> None:
     (tmp_path / "Danger.figma.ts").write_text(
         "// component=Button\nexport default { imports: ['import { ButtonDanger } from \"p\";'],"

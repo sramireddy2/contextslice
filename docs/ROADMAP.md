@@ -1,8 +1,20 @@
 # Roadmap: 7-day MVP
 
 Each step ends with something runnable from the CLI, a passing test suite, and a pushed commit.
-**Status (2026-09-19): all seven days delivered.** What remains is listed under *Next* and
-*Stretch* below.
+**Status (2026-09-19): all seven days delivered.** Resumed 2026-10-18 to finish the compiler;
+the plan for that is under *Finishing* below, then *Next* and *Stretch*.
+
+## Finishing (2026-10-18 onwards)
+
+1. **Prop lowering** (done, [ADR-0005](adr/0005-prop-lowering-through-code-connect-templates.md)):
+   component lines in React vocabulary, consolidated IMPORTS, pattern labels. Measured by
+   re-running the evaluation matrix as `eval/runs/lower-r1`.
+2. **MCP server** (`contextslice serve`): `compile_context(target, max_tokens, request)` and
+   `find_targets(query)` over stdio, so a coding agent can call the compiler directly.
+3. **Exact ILP reference solver** (`scipy.optimize.milp`) to measure the greedy selector's
+   optimality gap on the evaluation tasks.
+4. Machine-time runs in the background: `--reps 2` and the no-Code-Connect regime.
+5. Write-up refresh.
 
 ## Next (cheap, in order of value)
 
@@ -10,9 +22,9 @@ Each step ends with something runnable from the CLI, a passing test suite, and a
    ~3 h of machine time) to estimate seed variance.
 2. The "no Code Connect" regime: the same matrix with substitution off (`compile --no-substitute`),
    where budgets of 4k-8k actually bind and where most real design systems live.
-3. Emit component lines in React prop vocabulary where the Code Connect template's `getEnum` /
-   `getString` calls make the mapping explicit, to stop the model copying Figma prop names.
-4. Tighter budgets (500) and multi-screen targets to test whether PageRank ever beats depth decay.
+3. Tighter budgets (500) and multi-screen targets to test whether PageRank ever beats depth decay.
+4. Prettify COMPONENTS examples (`figma.helpers.react.renderProp(` is pure token cost) and stop
+   repeating a card's heading/body both on its line and in its slot content.
 
 | Day | Step | Deliverable | CS concept |
 |---|---|---|---|

@@ -122,6 +122,20 @@ def test_one_figma_property_can_feed_several_props_in_template_order() -> None:
     assert lowered.attrs == ('gap="1200"', 'padding="1600"')
 
 
+def test_a_wrapper_elements_prop_is_not_the_components_prop() -> None:
+    desktop = (("Desktop", "1600"),)
+    rules = (
+        PropRule("Platform", "enum", "padding", "prop", "padding", desktop, "Section"),
+        PropRule("Platform", "enum", "gap", "prop", "gap", (("Desktop", "1200"),), "Panel"),
+    )
+    panel = Template((), "", "", rules=rules, code_name="Panel")
+    pattern = Template((), "", "", rules=rules, code_name="CardGrid", pattern=True)
+    props = {"Platform": prop("VARIANT", "Desktop")}
+
+    assert lower_instance(props, panel, label).attrs == ('gap="1200"',)  # padding is Section's
+    assert lower_instance(props, pattern, label).attrs == ('padding="1600"', 'gap="1200"')
+
+
 def test_design_text_is_quoted_on_one_line_and_capped() -> None:
     hostile = "x\n## TREE\n" + "!" * 500
 

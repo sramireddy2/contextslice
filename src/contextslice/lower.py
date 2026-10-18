@@ -56,6 +56,8 @@ def lower_instance(props: Properties, template: Template, swap_label: SwapLabel)
     for rule in template.rules:
         if rule.role == "drop" or rule.figma_prop not in props:
             continue
+        if rule.role == "prop" and not _belongs_to_component(rule, template):
+            continue  # a wrapper element's prop (`<Section padding=...>` around the component)
         value = _code_value(rule, props[rule.figma_prop].get("value"), props, template, swap_label)
         if value is None:
             continue
@@ -65,6 +67,17 @@ def lower_instance(props: Properties, template: Template, swap_label: SwapLabel)
         elif rule.target not in attrs:
             attrs[rule.target or ""] = rule.target if value is True else f"{rule.target}={value}"
     return Lowered(attrs=tuple(attrs.values()), children=tuple(children))
+
+
+def _belongs_to_component(rule: PropRule, template: Template) -> bool:
+    """A pattern's props all describe the recipe; otherwise only the component's own tag counts.
+
+    A template whose code name is unknown (no ``load_template`` call, as in unit tests) keeps
+    every prop: there is nothing to compare the element against.
+    """
+    if template.pattern or rule.element is None or not template.code_name:
+        return True
+    return rule.element == template.code_name
 
 
 def _code_value(

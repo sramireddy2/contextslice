@@ -42,6 +42,7 @@ _READ = re.compile(
 _NAMED_IMPORT = re.compile(r"""^\s*import\s*\{([^}]*)\}\s*from\s*(["'])([^"']+)\2\s*;?\s*$""")
 _DEFAULT_IMPORT = re.compile(r"""^\s*import\s+(?:\*\s+as\s+)?(\w+)\s+from\s*["']""")
 _QUOTED = re.compile(r"""^(?:"[^"]*"|'[^']*')$""")
+_OPEN_TAG = re.compile(r"<(\$\{component\}|[A-Za-z][\w.]*)")
 
 Kind = Literal["enum", "string", "boolean", "swap"]
 Role = Literal["prop", "child", "drop"]
@@ -73,6 +74,10 @@ class PropRule:
     role: Role
     target: str | None = None  # React prop name when role is "prop"
     values: tuple[tuple[str, Value], ...] = ()  # Figma value -> code value, in template order
+    # The JSX element the prop is written on, when it can be told. A template's example may
+    # wrap the component (`<Section padding="${padding}"><Panel gap="${gap}">`): `padding`
+    # is Section's prop, not Panel's. None means "the component itself" or unknown.
+    element: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,7 +212,7 @@ def _rules(body: str, exported: str) -> tuple[PropRule, ...]:
     rules = []
     for match in _READ.finditer(body):
         values = _value_table(body, match.end())
-        role, target = _usage(match.group("var"), exported)
+        role, target, element = _usage(match.group("var"), exported)
         rules.append(
             PropRule(
                 figma_prop=match.group("prop"),
@@ -216,17 +221,19 @@ def _rules(body: str, exported: str) -> tuple[PropRule, ...]:
                 role=role,
                 target=target,
                 values=values,
+                element=element,
             )
         )
     return tuple(rules)
 
 
-def _usage(variable: str, exported: str) -> tuple[Role, str | None]:
+def _usage(variable: str, exported: str) -> tuple[Role, str | None, str | None]:
     """How the template's ``variable`` reaches the JSX: a named prop, the children, or not at all.
 
     ``renderProp("variant", variant)`` and ``variant="${variant}"`` (also ``={${variant}}`` and
     ``={variant}``) name a prop; a bare ``${variant}`` between tags or ``renderChildren(variant)``
-    is children; anything else (a value only used to compute another one) is dropped.
+    is children; anything else (a value only used to compute another one) is dropped. For a prop,
+    the enclosing JSX element is reported too (see PropRule.element).
     """
     var = re.escape(variable)
     named = re.search(r'(?:\brp|renderProp)\(\s*"(\w+)"\s*,\s*' + var + r"\b", exported)
@@ -237,10 +244,20 @@ def _usage(variable: str, exported: str) -> tuple[Role, str | None]:
         )
     if named is not None:
         target = named.group(1)
-        return ("child", None) if target == "children" else ("prop", target)
+        if target == "children":
+            return ("child", None, None)
+        return ("prop", target, _enclosing_element(exported, named.start()))
     if re.search(r"\$\{" + var + r"\}|renderChildren\(\s*" + var + r"\b", exported):
-        return ("child", None)
-    return ("drop", None)
+        return ("child", None, None)
+    return ("drop", None, None)
+
+
+def _enclosing_element(exported: str, position: int) -> str | None:
+    """The nearest ``<Tag`` opened before ``position``; None for the batch ``<${component}``."""
+    tags = _OPEN_TAG.findall(exported[:position])
+    if not tags:
+        return None
+    return None if tags[-1] == _BATCH_COMPONENT else tags[-1]
 
 
 def _value_table(text: str, start: int) -> tuple[tuple[str, Value], ...]:
