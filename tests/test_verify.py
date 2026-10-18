@@ -19,7 +19,7 @@ def bundle(tree: str, tokens: str = "", components: str = "", imports: str = "")
 def test_clean_bundle_passes() -> None:
     result = verify(
         bundle(
-            '## TREE\nFrame "A" fill=$color-x\n  <Button variant="primary"> "Go"\n  <pattern Grid>',
+            '## TREE\nFrame "A" fill=$color-x\n  <Button variant="primary"> "Go"\n  Pattern Grid',
             tokens="## TOKENS\ncolor-x: #fff",
             imports='## IMPORTS\nimport { Button } from "p";',
             components="## COMPONENTS\nGrid (layout pattern, not an import): <Section />",

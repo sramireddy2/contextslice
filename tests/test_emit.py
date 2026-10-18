@@ -76,8 +76,9 @@ def test_legend_lines_about_components_appear_only_when_there_are_components(toy
     plain = emit(toy_design, outline, sds_root=TOY_SDS)
     mapped = emit(toy_design, build_context_tree(toy_design, "5:0"), sds_root=TOY_SDS)
 
-    assert "real React props" not in plain.header and "<pattern" not in plain.header
-    assert "real React props" in mapped.header
+    assert "real React props" not in plain.header and "Pattern Name" not in plain.header
+    assert "<Slot> to import" not in plain.header
+    assert "real React props" in mapped.header and "<Slot> to import" in mapped.header
     # The outline still *names* IconStar (an instance-swap value), so its import is defined, but
     # no line in the outline is a component reference.
     assert "<" not in plain.tree.replace("## TREE", "")
@@ -135,10 +136,10 @@ def test_pattern_templates_are_marked_and_never_imported(tmp_path) -> None:
 
     bundle = emit(design, build_context_tree(design, "1:0"), sds_root=sds)
 
-    assert '  <pattern CardGrid padding="1200">' in bundle.tree.splitlines()
+    assert '  Pattern CardGrid padding="1200"' in bundle.tree.splitlines()  # no angle brackets
     assert "CardGrid (layout pattern, not an import): <Section padding=" in bundle.components
     assert bundle.imports == '## IMPORTS\nimport { Flex, Section } from "layout";'
-    assert "<pattern Name ...>" in bundle.header
+    assert "# Pattern Name ..." in bundle.header
     assert verify(bundle, ApproxTokenCounter()).ok
 
 

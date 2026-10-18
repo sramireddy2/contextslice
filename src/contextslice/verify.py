@@ -4,7 +4,7 @@ A compiler's last pass is the one that refuses to emit something broken. Three i
 
 1. the exact token count is within the budget (when one was given);
 2. no dangling references: every ``$token`` used in the TREE is defined in TOKENS, and every
-   ``<Component`` (or ``<pattern Component``) used in the TREE is defined, either by an import
+   ``<Component`` (or ``Pattern Component``) used in the TREE is defined, either by an import
    in IMPORTS or by an entry in COMPONENTS;
 3. the output is deterministic (checked by the test suite: two compiles are byte-identical).
 """
@@ -17,7 +17,7 @@ from contextslice.templates import import_names
 from contextslice.tokens import TokenCounter
 
 _TOKEN_REF = re.compile(r"\$([a-z0-9-]+)")
-_COMPONENT_REF = re.compile(r"^\s*<(?:pattern\s+)?([A-Za-z0-9_]+)")
+_COMPONENT_REF = re.compile(r"^\s*(?:<|Pattern\s+)([A-Za-z0-9_]+)")
 _ENTRY_NAME = re.compile(r"^([A-Za-z0-9_]+)")
 
 

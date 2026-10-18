@@ -34,12 +34,17 @@ ComponentDetail = Literal["imports", "example", "full"]
 
 _CSS_PREFIX = "--sds-"
 _PATTERN_NOTE = "(layout pattern, not an import)"
+# Two lines, joined so the selector can cost them as one (see section_overheads). The second
+# exists because a small model, shown `Slot "Cards"` and `Frame "Text"`, wrote <Slot> and <Frame>.
 _COMPONENT_LEGEND = (
     "# Props on a <Name ...> line are that component's real React props, already translated "
-    "from the design; text after the > is its children."
+    "from the design; text after the > is its children.\n"
+    "# Frame, Text, Slot and Pattern lines are design structure, not components: there is no "
+    "<Frame> or <Slot> to import; build them from the layout primitives and plain elements."
 )
 _PATTERN_LEGEND = (
-    "# <pattern Name ...> = a layout recipe, not an import: write out its JSX from COMPONENTS."
+    "# Pattern Name ... = a layout recipe, not an import: write out its JSX from COMPONENTS "
+    "with the values shown."
 )
 
 _KIND_LABEL = {
@@ -376,8 +381,13 @@ class _Renderer:
             node.props.get("componentProperties", {}), template, self._component_label
         )
         name = template.code_name or mapping.component_name
-        tag = f"pattern {name}" if template.pattern else name
-        line = f"<{tag}{''.join(' ' + a for a in lowered.attrs)}>"
+        attrs = "".join(" " + a for a in lowered.attrs)
+        if template.pattern:
+            # No angle brackets on purpose: anything that looks like a tag gets pasted as one
+            # (a 7B model wrote `<CardGridContentList gap="1200">`). A kind word + name reads
+            # like the `Frame "Hero"` and `Slot "Cards"` lines: something to expand, not import.
+            return f"Pattern {name}{attrs}"
+        line = f"<{name}{attrs}>"
         return f"{line} {' '.join(lowered.children)}" if lowered.children else line
 
     def _node_line(self, node: DesignNode) -> str:
