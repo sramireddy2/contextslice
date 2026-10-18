@@ -44,20 +44,26 @@ screen (301 nodes). Exact tokens under the Qwen2.5-Coder tokenizer.
 | P5 structural dedupe | 1,935 | 0.15% |
 | P7 budgeted selection, B = 1,000 | 948 | 0.07% |
 
-Generated implementations (8 screens, local 7B model, same prompt, same budget):
+Generated implementations (8 screens, local 7B model, same prompt, same budget; run
+`lower-r1`, October 2026):
 
-| Context given to the model | Component reuse recall | Precision |
-|---|---|---|
-| none | 0.07 | 0.16 |
-| flat simplified outline, truncated to 1,000 tokens | 0.11 | 0.23 |
-| **ContextSlice, 1,000 tokens** | **0.48** | **0.89** |
-| ContextSlice, unbudgeted (2,224 tokens) | 0.55 | 0.89 |
+| Context given to the model | Component reuse recall | Precision | Figma-vocabulary props | Type errors / file |
+|---|---|---|---|---|
+| none | 0.11 | 0.26 | 0 | 1.8 |
+| flat simplified outline, truncated to 1,000 tokens | 0.13 | 0.32 | 0 | 3.3 |
+| **ContextSlice, 1,000 tokens** | **0.53** | **1.00** | **0** | **1.3** |
+| ContextSlice, 2,000 tokens | 0.71 | 1.00 | 0 | 0.6 |
+| ContextSlice, unbudgeted (1,984 tokens) | 0.75 | 1.00 | 0 | 1.4 |
 
-ContextSlice beat the flat outline on all 8 screens at both budgets (+0.37 recall, 95% CI
-[+0.26, +0.49]). Half the tokens bought almost all of the benefit. PageRank relevance did *not*
-measurably beat plain depth-decay at these budgets, and every arm failed strict type-checking:
-the small model copies Figma prop names onto React components. Full tables, the pre-registered
-comparisons and the limitations are in [docs/eval.md](docs/eval.md).
+ContextSlice beat the flat outline on all 8 screens at both budgets (+0.39 recall, 95% CI
+[+0.31, +0.50]). Against the September run of the same compiler *before* prop lowering
+(re-scored under the same metric), type errors per file fell from 5.9 to 1.3 at B=1000 and from
+11.5 to 0.6 at B=2000 (0/7 and 0/8 screens got worse), Figma-vocabulary props went from up to
+9.6 per file to zero, precision rose to 1.00 everywhere, and two screens type-check clean at
+B=1000, the first ever. PageRank relevance still does *not* measurably beat plain depth-decay at
+these budgets. What remains is the model using listed components without importing them and
+turning structure words (`Slot`, `Frame`) into tags. Full tables, the pre-registered comparisons
+and the limitations are in [docs/eval.md](docs/eval.md).
 
 ## Status
 

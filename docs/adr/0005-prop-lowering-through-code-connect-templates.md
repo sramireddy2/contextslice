@@ -57,6 +57,12 @@ of that run, 733 of 898 instance-property occurrences were properties that *some
 
 ## Consequences
 
+- **Measured** (run `lower-r1`, 8 screens, same model/prompt/seeds as September, details in
+  `docs/eval.md`): Figma-vocabulary props on component tags went from up to 9.6 per file to
+  zero in all 40 compiled generations; type-class errors per file fell 5.9 -> 1.3 at B=1000 and
+  11.5 -> 0.6 at B=2000 with no screen getting worse; precision rose to 1.00 in every compiled
+  arm; recall +0.09 / +0.23 / +0.30 (B=1000 / B=2000 / unbudgeted). What remains is the model
+  omitting imports it was given and turning structure words into tags.
 - About, unbudgeted: 2,146 -> 1,942 tokens (-9.5%) despite the extra legend lines. At B=1000
   the selector now fills 946 tokens with 0 repairs and 28 tree lines, where it previously
   reached 971 with 1 repair and 21 lines.

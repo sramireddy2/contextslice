@@ -7,8 +7,9 @@ the plan for that is under *Finishing* below, then *Next* and *Stretch*.
 ## Finishing (2026-10-18 onwards)
 
 1. **Prop lowering** (done, [ADR-0005](adr/0005-prop-lowering-through-code-connect-templates.md)):
-   component lines in React vocabulary, consolidated IMPORTS, pattern labels. Measured by
-   re-running the evaluation matrix as `eval/runs/lower-r1`.
+   component lines in React vocabulary, consolidated IMPORTS, pattern labels. Measured as
+   `eval/runs/lower-r1` (see docs/eval.md): vocabulary leaks 0, type errors per file 5.9 -> 1.3
+   at B=1000, precision 1.00. The follow-up legend/import fixes are measured as `lower-r2`.
 2. **MCP server** (`contextslice serve`): `compile_context(target, max_tokens, request)` and
    `find_targets(query)` over stdio, so a coding agent can call the compiler directly.
 3. **Exact ILP reference solver** (`scipy.optimize.milp`) to measure the greedy selector's

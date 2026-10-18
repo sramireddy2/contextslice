@@ -160,3 +160,93 @@ Regenerate with `uv run contextslice report --run eval/runs/full-r1`.
   judgement of the generated screens.
 - The model may have seen `figma/sds` during training (it is public); the N arm's 0.07 recall
   suggests it has not memorised the component API, but this was not controlled.
+
+## Results: prop-lowering run `lower-r1` (8 screens x 5 arms x B in {1000, 2000}; 2026-10-18)
+
+Same tasks, model, prompt scaffold, seeds and budgets as `full-r1`; the only change is the
+compiler (ADR-0005: component lines in React vocabulary, one IMPORTS block, pattern labels,
+the selector fixes). The N and F arms do not contain component lines, so their prompts are
+byte-identical to September's and their 24 generations came from the cache: they are the control
+that the harness still measures the same thing. The September run was re-scored under the current
+expected-component set (`contextslice rescore`) so that recall is compared with the same
+denominator; its rows appear as `C:r1` etc.
+
+Compare: `uv run contextslice report --run eval/runs/lower-r1 --baseline eval/runs/full-r1-rescored --baseline-label r1`.
+
+### Per-arm means (unit = task; 8 tasks per arm)
+
+| arm | reuse recall | precision | Figma-vocab props | tsc pass | missing / file | type / file | output tokens |
+|---|---|---|---|---|---|---|---|
+| N | 0.11 | 0.26 | 0 | 0 | 6.5 | 1.8 | 431 |
+| F@1000 | 0.13 | 0.32 | 0 | 0 | 7.6 | 3.3 | 661 |
+| F@2000 | 0.17 | 0.35 | 0 | 0 | 8.5 | 4.4 | 675 |
+| S@1000 | 0.52 | 1.00 | 0 | 0.12 | 13.9 | 0.0 | 828 |
+| S@2000 | 0.72 | 1.00 | 0 | 0.12 | 8.5 | 0.4 | 923 |
+| **C@1000** | **0.53** | **1.00** | **0** | **0.25** | 10.6 | **1.3** | 475 |
+| **C@2000** | **0.71** | **1.00** | **0** | 0.12 | 4.8 | **0.6** | 867 |
+| U | 0.75 | 1.00 | 0 | 0 | 16.6 | 1.4 | 987 |
+| C:r1@1000 (before) | 0.44 | 0.89 | 0.4 | 0 | 7.1 | 5.9 | 584 |
+| C:r1@2000 (before) | 0.48 | 0.91 | 9.6 | 0 | 7.3 | 11.5 | 635 |
+| S:r1@1000 (before) | 0.49 | 0.94 | 5.1 | 0 | 16.6 | 10.5 | 704 |
+| U:r1 (before) | 0.46 | 0.87 | 9.1 | 0 | 18.8 | 9.8 | 724 |
+
+### Before/after, paired by screen (a - b, 95% bootstrap CI over the 8 tasks)
+
+| comparison | metric | mean diff | 95% CI | wins/losses |
+|---|---|---|---|---|
+| C@1000 vs C:r1@1000 | tsc_type | -4.62 | [-6.25, -3.00] | 0/7 |
+| C@2000 vs C:r1@2000 | tsc_type | -10.88 | [-19.62, -3.50] | 0/8 |
+| S@1000 vs S:r1@1000 | tsc_type | -10.50 | [-17.25, -4.88] | 0/8 |
+| U vs U:r1 | tsc_type | -8.38 | [-18.75, +0.88] | 1/4 |
+| C@1000 vs C:r1@1000 | reuse_recall | +0.09 | [-0.01, +0.20] | 5/2 |
+| C@2000 vs C:r1@2000 | reuse_recall | +0.23 | [+0.09, +0.37] | 6/1 |
+| U vs U:r1 | reuse_recall | +0.30 | [+0.16, +0.45] | 7/0 |
+| C@1000 vs C:r1@1000 | reuse_precision | +0.11 | [+0.05, +0.18] | 5/0 |
+| C@2000 vs C:r1@2000 | figma_props | -9.62 | [-21.25, +0.00] | 0/2 |
+| C@1000 vs C:r1@1000 | tsc_missing | +3.50 | [-10.62, +17.50] | 6/2 |
+| C@2000 vs C:r1@2000 | tsc_missing | -2.50 | [-11.75, +5.62] | 3/5 |
+
+Pre-registered comparisons in this run: C@1000 vs F@1000 recall +0.39 [+0.31, +0.50] (8/0),
+precision +0.68 [+0.59, +0.78] (8/0); C vs S recall +0.01 and -0.01 (no difference, as before);
+U vs C@1000 recall +0.23 [+0.14, +0.32] (8/0) at 2.4x the generation time.
+
+### What the numbers say
+
+1. **The vocabulary leak is gone and the prop errors went with it.** Capitalised Figma
+   properties on component tags: zero in all 40 compiled generations (up to 9.6 per file
+   before). Type-class errors per file: 5.9 -> 1.3 at B=1000, 11.5 -> 0.6 at B=2000, 10.5 -> 0.0
+   for the BFS arm; no screen got worse in any compiled arm. This is the direct effect of the
+   compiler emitting `<Card direction="horizontal" variant="stroke">` instead of
+   `<Card Direction=Horizontal Variant=Stroke>`.
+2. **Precision is 1.00 in every compiled arm.** When the model imports and uses a component,
+   it is now always one the context named. Recall rose too: +0.09 at B=1000 (CI touching zero),
+   +0.23 at B=2000, +0.30 unbudgeted. The unbudgeted arm reaches 0.75: the model uses three of
+   every four components the screen is built from.
+3. **Two screens type-check clean at B=1000 (About, Article), the first non-zero pass rate**;
+   Waitlist passes at B=2000 under both selectors and Home under BFS at B=1000. Still a floor
+   more than a comparison: the remaining errors are almost all *missing names*, not wrong props.
+4. **What is left is the model not following the bundle's conventions.** The missing names fall
+   in two classes: real components used without importing them although they are in the IMPORTS
+   block (`NavigationPill` 36 occurrences in the C arm, `TextListItem` 36-42 in S and U), and
+   structure words turned into tags (`Frame` 24, `Slot` 8-14, `Vector` 5-13). Three generations
+   (two at B=2000) have syntax errors from pasting the elision marker into JSX:
+   `<Slot name="Slot" (+7 elided) />`. Three `InputField`-family templates compute their imports
+   conditionally and had no import line at all. All four are compiler-side fixes (legend wording,
+   parsing conditional imports) and are applied after this run; measuring them is another ~2.5 h
+   of machine time.
+5. **A harness bug was found and fixed by the control arms.** `tsc` reports no semantic
+   diagnostics for a program with a syntactic error anywhere, and all 64 files were checked in
+   one batch. The first scoring of this run showed the cached N and F files with zero errors
+   where the identical files had 6-8 in September. The checker now sets aside files that report
+   anything and re-checks the rest (at most three runs). September's numbers were unaffected (no
+   generation then had a syntax error), which the re-scored baseline confirms line for line.
+6. **PageRank vs BFS: still no difference** (recall +0.01 / -0.01). BFS at B=1000 happens to have
+   fewer type errors (0.0 vs 1.3, CI excludes zero) and more missing names; with 8 screens that
+   is noise around two selectors that pick nearly the same lines.
+
+Limitations are as for `full-r1`: n = 8, one repetition, one 7B model, one design system with
+full Code Connect coverage. Two further caveats: the expected-component set changed between the
+runs (it now counts every name the IMPORTS block provides, and excludes layout patterns), which
+is why the baseline was re-scored rather than quoted; and the contexts in `eval/runs/lower-r1`
+were produced by the compiler at commit `2c0a327`, before the legend and import-parsing changes
+described in point 4.
