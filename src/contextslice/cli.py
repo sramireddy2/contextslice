@@ -388,6 +388,43 @@ def eval_command(
 
 
 @app.command()
+def serve(
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+    log_level: Annotated[str, typer.Option(help="DEBUG, INFO, WARNING or ERROR.")] = "INFO",
+) -> None:
+    """Serve the compiler to coding agents over MCP (stdio).
+
+    stdout carries the protocol, so everything human-readable here goes to stderr. Register it
+    with, for example, `claude mcp add contextslice -- uv run --extra mcp contextslice serve`.
+    """
+    errors = Console(stderr=True)
+    try:
+        from contextslice.mcp_server import Workspace, build_server, configure_logging
+    except ImportError:
+        errors.print(
+            "[red]The MCP extra is not installed.[/red] Run `uv sync --extra mcp` "
+            "(or `pip install 'contextslice[mcp]'`) and try again."
+        )
+        raise typer.Exit(code=1) from None
+
+    configure_logging(log_level.upper())
+    with errors.status("Loading snapshot, IR and graph..."):
+        try:
+            workspace = Workspace.load(snapshots_dir, sds_dir)
+        except FileNotFoundError as error:
+            errors.print(f"[red]{error}[/red]")
+            raise typer.Exit(code=1) from None
+    errors.print(
+        f"contextslice MCP server ready on stdio: {len(workspace.design.nodes):,} nodes, "
+        f"{len(workspace.design.mappings):,} code mappings, tokenizer {workspace.counter.name}"
+    )
+    build_server(workspace, log_level=log_level.upper()).run(transport="stdio")
+
+
+@app.command()
 def rescore(
     run: Annotated[Path, typer.Option(help="Run to re-score (results.jsonl + generations/).")],
     out: Annotated[Path, typer.Option(help="Where to write the re-scored results.")],

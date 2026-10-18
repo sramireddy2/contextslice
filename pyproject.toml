@@ -21,6 +21,11 @@ dependencies = [
 # `uv run contextslice ...` resolves to the Typer app object in src/contextslice/cli.py
 contextslice = "contextslice.cli:app"
 
+[project.optional-dependencies]
+mcp = [
+    "mcp>=1.2",
+]
+
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]
 build-backend = "uv_build"
@@ -28,6 +33,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "hypothesis>=6.168.0",
+    "mcp>=2.3.0",
     "pytest>=9.1.1",
     "ruff>=0.16.8",
 ]

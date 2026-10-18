@@ -101,6 +101,41 @@ Reproducing the generations themselves needs [Ollama](https://ollama.com) with
 `qwen2.5-coder:7b` and `npm ci` inside `vendor/sds`; every response is cached under
 `eval/cache/`, so `contextslice eval` re-scores without regenerating.
 
+## Use it from a coding agent (MCP)
+
+The compiler is also an [MCP](https://modelcontextprotocol.io) server over stdio with two tools,
+`find_targets(query)` and `compile_context(target, max_tokens, request)`
+([ADR-0006](docs/adr/0006-mcp-server-over-stdio.md)). It needs the optional extra:
+
+```bash
+uv sync --extra mcp
+```
+
+Register it with Claude Code from the project root (`--scope project` writes a shareable
+`.mcp.json`; omit it for a private, per-project entry):
+
+```bash
+claude mcp add --scope project contextslice -- uv run --extra mcp contextslice serve
+```
+
+The same server for Cursor, in `.cursor/mcp.json` (or `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "contextslice": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--extra", "mcp", "contextslice", "serve"]
+    }
+  }
+}
+```
+
+Then ask the agent to implement a screen: it calls `find_targets("about desktop")`, then
+`compile_context("175:4995", max_tokens=1000)`, and pastes the verified bundle into its own
+prompt. Everything human-readable from `serve` goes to stderr; stdout is the protocol.
+
 ## Quickstart
 
 Requires [uv](https://docs.astral.sh/uv/) (it manages Python, the virtualenv and the lockfile).

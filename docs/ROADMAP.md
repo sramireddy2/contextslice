@@ -10,8 +10,11 @@ the plan for that is under *Finishing* below, then *Next* and *Stretch*.
    component lines in React vocabulary, consolidated IMPORTS, pattern labels. Measured as
    `eval/runs/lower-r1` (see docs/eval.md): vocabulary leaks 0, type errors per file 5.9 -> 1.3
    at B=1000, precision 1.00. The follow-up legend/import fixes are measured as `lower-r2`.
-2. **MCP server** (`contextslice serve`): `compile_context(target, max_tokens, request)` and
-   `find_targets(query)` over stdio, so a coding agent can call the compiler directly.
+2. **MCP server** (done, [ADR-0006](adr/0006-mcp-server-over-stdio.md)): `contextslice serve`
+   exposes `find_targets(query)` and `compile_context(target, max_tokens, request)` over stdio
+   through the official SDK (optional extra `contextslice[mcp]`), console output on stderr,
+   expected failures as `ok=false` results. Verified end to end with the SDK's stdio client
+   against the real snapshot (compile 2.9 s, 922 tokens verified under B=1000).
 3. **Exact ILP reference solver** (`scipy.optimize.milp`) to measure the greedy selector's
    optimality gap on the evaluation tasks.
 4. Machine-time runs in the background: `--reps 2` and the no-Code-Connect regime.
