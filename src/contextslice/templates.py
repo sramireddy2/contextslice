@@ -159,10 +159,14 @@ def _parse(path: Path) -> Template:
     body, _, exported = source.partition("export default")
 
     imports_match = _IMPORTS_ARRAY.search(exported)
-    imports = tuple(
-        literal.group(2).strip()
-        for literal in _STRING_LITERAL.finditer(imports_match.group(1) if imports_match else "")
-    )
+    if imports_match:
+        literals = _STRING_LITERAL.finditer(imports_match.group(1))
+    else:
+        # `const imports = hasLabel ? ['import { InputField } ...'] : ['import { Input } ...']`
+        # then `imports,` in the export: take every import-looking literal in the file. An
+        # extra, unused import costs a lint note; a missing one costs a compile error.
+        literals = (m for m in _STRING_LITERAL.finditer(source) if m.group(2).startswith("import "))
+    imports = tuple(dict.fromkeys(literal.group(2).strip() for literal in literals))
 
     return Template(
         imports=imports,

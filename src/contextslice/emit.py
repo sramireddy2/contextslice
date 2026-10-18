@@ -39,8 +39,10 @@ _PATTERN_NOTE = "(layout pattern, not an import)"
 _COMPONENT_LEGEND = (
     "# Props on a <Name ...> line are that component's real React props, already translated "
     "from the design; text after the > is its children.\n"
-    "# Frame, Text, Slot and Pattern lines are design structure, not components: there is no "
-    "<Frame> or <Slot> to import; build them from the layout primitives and plain elements."
+    "# Copy the IMPORTS block verbatim at the top of the file: every <Name> used below is in it.\n"
+    "# Lines that start with Frame, Text, Vector, Shape, Group, Slot or Pattern are design "
+    "structure, not components: there is no <Frame>, <Slot> or <Vector> to import; build them "
+    "from the layout primitives and plain elements."
 )
 _PATTERN_LEGEND = (
     "# Pattern Name ... = a layout recipe, not an import: write out its JSX from COMPONENTS "

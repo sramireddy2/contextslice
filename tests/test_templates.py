@@ -149,6 +149,27 @@ def test_imports_are_consolidated_per_module_deterministically() -> None:
     assert import_names(['import { Text as T } from "x";']) == {"T"}
 
 
+def test_conditional_imports_are_all_kept(tmp_path) -> None:
+    (tmp_path / "Field.figma.ts").write_text(
+        "// component=InputField\n"
+        'import figma from "figma";\n'
+        'const hasLabel = figma.selectedInstance.getBoolean("Has Label");\n'
+        "const imports = hasLabel\n"
+        "  ? ['import { InputField } from \"primitives\";']\n"
+        "  : ['import { Input } from \"primitives\";'];\n"
+        "export default { imports, example: figma.code`<InputField />` };\n",
+        encoding="utf-8",
+    )
+
+    template = load_template(tmp_path, CodeMapping("1", "InputField", "", "Field.figma.ts"))
+
+    assert template.imports == (
+        'import { InputField } from "primitives";',
+        'import { Input } from "primitives";',
+    )
+    assert template.exports == {"InputField", "Input"} and not template.pattern
+
+
 def test_example_with_nested_template_literals_is_extracted_whole(tmp_path) -> None:
     # A regex cannot match nested delimiters; first-to-last backtick can (see templates._example).
     path = tmp_path / "Nested.figma.ts"

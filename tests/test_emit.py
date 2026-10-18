@@ -77,8 +77,8 @@ def test_legend_lines_about_components_appear_only_when_there_are_components(toy
     mapped = emit(toy_design, build_context_tree(toy_design, "5:0"), sds_root=TOY_SDS)
 
     assert "real React props" not in plain.header and "Pattern Name" not in plain.header
-    assert "<Slot> to import" not in plain.header
-    assert "real React props" in mapped.header and "<Slot> to import" in mapped.header
+    assert "<Vector> to import" not in plain.header
+    assert "real React props" in mapped.header and "<Vector> to import" in mapped.header
     # The outline still *names* IconStar (an instance-swap value), so its import is defined, but
     # no line in the outline is a component reference.
     assert "<" not in plain.tree.replace("## TREE", "")
