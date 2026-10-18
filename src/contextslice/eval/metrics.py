@@ -149,7 +149,11 @@ class TsError:
         for kind, codes in _ERROR_CLASSES.items():
             if self.code in codes:
                 return kind
-        return "syntax" if self.code.startswith("TS1") else "other"
+        # Parser diagnostics: TS1xxx, the JSX parser's TS17xxx, and TS2657 ("JSX expressions
+        # must have one parent element"), which the parser raises under a checker-range code.
+        if self.code.startswith(("TS1", "TS17")) or self.code == "TS2657":
+            return "syntax"
+        return "other"
 
 
 def parse_tsc_output(text: str) -> list[TsError]:
