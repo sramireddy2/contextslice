@@ -45,25 +45,26 @@ screen (301 nodes). Exact tokens under the Qwen2.5-Coder tokenizer.
 | P7 budgeted selection, B = 1,000 | 948 | 0.07% |
 
 Generated implementations (8 screens, local 7B model, same prompt, same budget; run
-`lower-r1`, October 2026):
+`lower-r2`, October 2026):
 
-| Context given to the model | Component reuse recall | Precision | Figma-vocabulary props | Type errors / file |
-|---|---|---|---|---|
-| none | 0.11 | 0.26 | 0 | 1.8 |
-| flat simplified outline, truncated to 1,000 tokens | 0.13 | 0.32 | 0 | 3.3 |
-| **ContextSlice, 1,000 tokens** | **0.53** | **1.00** | **0** | **1.3** |
-| ContextSlice, 2,000 tokens | 0.71 | 1.00 | 0 | 0.6 |
-| ContextSlice, unbudgeted (1,984 tokens) | 0.75 | 1.00 | 0 | 1.4 |
+| Context given to the model | Component reuse recall | Precision | Figma-vocabulary props | Missing names / file | Type errors / file |
+|---|---|---|---|---|---|
+| none | 0.12 | 0.30 | 0 | 6.5 | 1.8 |
+| flat simplified outline, truncated to 1,000 tokens | 0.14 | 0.33 | 0 | 7.6 | 3.3 |
+| **ContextSlice, 1,000 tokens** | **0.50** | **1.00** | **0** | **2.4** | **0.8** |
+| ContextSlice, 2,000 tokens | 0.70 | 1.00 | 0 | 15.5 (one screen: 69) | 0.8 |
+| ContextSlice, unbudgeted (~1,900 tokens) | 0.75 | 1.00 | 0 | 9.1 | 1.6 |
 
 ContextSlice beat the flat outline on all 8 screens at both budgets (+0.39 recall, 95% CI
-[+0.31, +0.50]). Against the September run of the same compiler *before* prop lowering
-(re-scored under the same metric), type errors per file fell from 5.9 to 1.3 at B=1000 and from
-11.5 to 0.6 at B=2000 (0/7 and 0/8 screens got worse), Figma-vocabulary props went from up to
-9.6 per file to zero, precision rose to 1.00 everywhere, and two screens type-check clean at
-B=1000, the first ever. PageRank relevance still does *not* measurably beat plain depth-decay at
-these budgets. What remains is the model using listed components without importing them and
-turning structure words (`Slot`, `Frame`) into tags. Full tables, the pre-registered comparisons
-and the limitations are in [docs/eval.md](docs/eval.md).
+[+0.31, +0.50] in `lower-r1`). Against the September run of the same compiler *before* prop
+lowering (re-scored under the same metric), type errors per file fell from 5.9 to about 1 at
+B=1000 and from 11.5 to under 1 at B=2000 with no screen getting worse, Figma-vocabulary props
+went from up to 9.6 per file to zero, and precision rose to 1.00 everywhere. The depth-decay
+arm now type-checks clean on 5 of 8 screens at B=1000. PageRank relevance still does *not*
+measurably beat plain depth-decay at these budgets. What remains is the model not copying an
+import block it was given (one screen accounts for 69 of the missing names at B=2000) and,
+rarely, turning structure words into tags. Full tables, the pre-registered comparisons, the
+before/after runs and the limitations are in [docs/eval.md](docs/eval.md).
 
 ## Status
 
