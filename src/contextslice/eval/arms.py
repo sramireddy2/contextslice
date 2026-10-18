@@ -28,6 +28,7 @@ from contextslice.tokens import TokenCounter
 ARMS = ("N", "F", "S", "C", "U")
 BUDGETED_ARMS = ("F", "S", "C")
 _TOKEN_REF = re.compile(r"\$([a-z0-9-]+)")
+_ENTRY_NAME = re.compile(r"^([A-Za-z0-9_]+)")
 
 
 @dataclass(frozen=True)
@@ -49,10 +50,12 @@ class Expectations:
 
 
 def expectations_from(bundle: Bundle) -> Expectations:
+    """Importable components only: a layout pattern cannot be imported, so it cannot be reused."""
     components = {
-        line.split(":", 1)[0]
+        match.group(1)
         for line in bundle.components.splitlines()[1:]
-        if line and not line.startswith(" ")
+        if line and not line.startswith(" ") and "(layout pattern" not in line
+        if (match := _ENTRY_NAME.match(line))
     }
     token_values = {}
     for line in bundle.tokens.splitlines()[1:]:

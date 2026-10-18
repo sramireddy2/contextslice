@@ -22,7 +22,7 @@ def test_ledger_has_one_row_per_stage_and_ends_at_the_bundle_size(toy_design, to
     assert result.ledger[2].nodes == 5  # the hidden node is gone
     assert result.ledger[3].nodes == 4  # root + <Button> + <IconStar> + the unmapped instance
     assert result.ledger[4].nodes == 4  # nothing repeats in the toy file
-    assert set(result.section_tokens) == {"header", "COMPONENTS", "TOKENS", "TREE"}
+    assert set(result.section_tokens) == {"header", "IMPORTS", "COMPONENTS", "TOKENS", "TREE"}
 
 
 def test_disabling_substitution_is_just_a_shorter_ledger(toy_design) -> None:

@@ -68,18 +68,20 @@ class Item:
 class Selection:
     levels: dict[str, int] = field(default_factory=dict)
     component_detail: dict[str, str] = field(default_factory=dict)
-    applied: list[tuple[str, int]] = field(default_factory=list)  # (item id, new level) in order
+    # (item id, new level, previous level) in the order applied. Component references and
+    # slots jump from OMIT straight to FULL, so "one level down" is not always the right undo.
+    applied: list[tuple[str, int, int]] = field(default_factory=list)
     estimated_tokens: int = 0
 
     def undo_last(self) -> tuple[str, int] | None:
         """Revert the most recent move. LIFO order keeps precedence intact by construction."""
         if not self.applied:
             return None
-        key, level = self.applied.pop()
+        key, level, previous = self.applied.pop()
         if key.startswith("code:"):
             self.component_detail[key] = IMPORTS
         else:
-            self.levels[key] = level - 1
+            self.levels[key] = previous
         return key, level
 
 
@@ -116,13 +118,15 @@ def build_items(
     root: ContextNode,
     counter: TokenCounter,
     scores: dict[str, float],
+    *,
+    sds_root: Path | None = None,
 ) -> dict[str, Item]:
     items: dict[str, Item] = {}
     parents: dict[str, str | None] = {root.node_id: None}
     for node, depth in walk_context(root):
         for child in node.children:
             parents[child.node_id] = node.node_id
-        texts = emit.describe(design, node)
+        texts = emit.describe(design, node, sds_root)
         indent = "  " * depth
         items[node.node_id] = Item(
             node_id=node.node_id,
@@ -155,11 +159,11 @@ def select(
         for v, line in emit.variable_lines_for(design, _all_vars(items)).items()
     }
     entry_cost: dict[str, dict[str, int]] = {}
+    flags: dict[str, emit.EntryFlags] = {}
     for key, mapping in emit.mappings_for(design, _all_maps(items)).items():
-        entry_cost[key] = {
-            detail: counter.count(emit.component_entry(mapping, sds_root, detail))
-            for detail in (IMPORTS, EXAMPLE)
-        }
+        entry_cost[key] = emit.entry_costs(mapping, sds_root, counter)
+        flags[key] = emit.entry_flags(mapping, sds_root)
+    overheads = emit.section_overheads(counter)
     users: dict[str, list[str]] = {}  # mapping key -> items that reference it
     for item in items.values():
         for key in item.mappings:
@@ -168,18 +172,39 @@ def select(
     selection = Selection()
     paid_vars: set[str] = set()
     paid_maps: set[str] = set()
+    sections = {"components": False, "pattern_legend": False}  # one-time costs already paid
     spent = 0
     dependents: dict[str, list[str]] = {}  # definition key -> item ids whose cost includes it
     for item in items.values():
         for dep in (*item.variables, *item.mappings):
             dependents.setdefault(dep, []).append(item.node_id)
 
+    def section_cost(newly_paid: list[str], shows_entry: bool = False) -> int:
+        """Headings and legend lines that appear with the first component (or first pattern)."""
+        extra = 0
+        if newly_paid and not paid_maps:
+            extra += overheads["imports"] + overheads["legend"]
+        if (shows_entry or any(flags[m].shows_entry for m in newly_paid)) and not sections[
+            "components"
+        ]:
+            extra += overheads["components"]
+        if any(flags[m].pattern for m in newly_paid) and not sections["pattern_legend"]:
+            extra += overheads["pattern_legend"]
+        return extra
+
+    def mark_sections(newly_paid: list[str], shows_entry: bool = False) -> None:
+        if shows_entry or any(flags[m].shows_entry for m in newly_paid):
+            sections["components"] = True
+        if any(flags[m].pattern for m in newly_paid):
+            sections["pattern_legend"] = True
+
     def move_cost(item: Item, level: int) -> int:
         if level == STUB:
             return item.stub_cost
         cost = item.full_cost - (item.stub_cost if selection.levels.get(item.node_id) else 0)
         cost += sum(variable_cost[v] for v in item.variables if v not in paid_vars)
-        cost += sum(entry_cost[m][IMPORTS] for m in item.mappings if m not in paid_maps)
+        unpaid = [m for m in item.mappings if m not in paid_maps]
+        cost += sum(entry_cost[m][IMPORTS] for m in unpaid) + section_cost(unpaid)
         return cost
 
     def move_gain(item: Item, level: int) -> float:
@@ -197,7 +222,8 @@ def select(
         return EXAMPLE_SHARE * sum(items[u].value for u in users.get(key, ()))
 
     def example_cost(key: str) -> int:
-        return entry_cost[key][EXAMPLE] - entry_cost[key][IMPORTS]
+        heading = 0 if sections["components"] else overheads["components"]
+        return entry_cost[key][EXAMPLE] - entry_cost[key][IMPORTS] + heading
 
     def ratio(gain: float, cost: int) -> float:
         return gain / max(cost, 1)
@@ -227,12 +253,14 @@ def select(
     def apply_node(item: Item, level: int) -> None:
         nonlocal spent
         spent += move_cost(item, level)
+        previous = selection.levels.get(item.node_id, OMIT)
         selection.levels[item.node_id] = level
-        selection.applied.append((item.node_id, level))
+        selection.applied.append((item.node_id, level, previous))
         if level == FULL:
             newly_paid = [v for v in item.variables if v not in paid_vars]
             paid_vars.update(newly_paid)
             newly_paid_maps = [m for m in item.mappings if m not in paid_maps]
+            mark_sections(newly_paid_maps)
             for key in newly_paid_maps:
                 paid_maps.add(key)
                 selection.component_detail[key] = IMPORTS
@@ -275,14 +303,17 @@ def select(
                 continue
             if spent + cost <= budget:
                 apply_node(item, level)
+            # The heading cost of a stale "code" key can only have gone down; it is re-checked
+            # with a fresh example_cost() when popped.
         else:
             if selection.component_detail.get(key) != IMPORTS:
                 continue
             cost = example_cost(key)
             if spent + cost <= budget:
                 spent += cost
+                sections["components"] = True
                 selection.component_detail[key] = EXAMPLE
-                selection.applied.append((key, FULL))
+                selection.applied.append((key, FULL, OMIT))
 
     selection.estimated_tokens = spent
     return selection

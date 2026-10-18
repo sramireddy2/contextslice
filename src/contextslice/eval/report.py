@@ -55,6 +55,13 @@ def raw_elements(row: Row) -> float | None:
     return float(row["raw_elements"]) if row.get("extracted") else None
 
 
+def figma_props(row: Row) -> float | None:
+    """Figma-vocabulary attributes on component tags (absent in runs before prop lowering)."""
+    if not row.get("extracted") or "figma_props" not in row:
+        return None
+    return float(row["figma_props"])
+
+
 def tsc_missing(row: Row) -> float | None:
     """Hallucinated or un-imported names: the most context-sensitive type error."""
     return float(row["tsc_errors"].get("missing", 0)) if row.get("tsc_checked") else None
@@ -79,6 +86,7 @@ METRICS: dict[str, Metric] = {
     "token_rate": token_rate,
     "missed_tokens": missed_tokens,
     "raw_elements": raw_elements,
+    "figma_props": figma_props,
     "tsc_pass": tsc_pass,
     "tsc_missing": tsc_missing,
     "tsc_type": tsc_type,
@@ -90,6 +98,7 @@ METRICS: dict[str, Metric] = {
 PAIRED_METRICS = (
     "reuse_recall",
     "reuse_precision",
+    "figma_props",
     "tsc_missing",
     "tsc_type",
     "token_rate",

@@ -2,6 +2,7 @@ from contextslice.eval.metrics import (
     CompileResultSummary,
     component_reuse,
     extract_tsx,
+    figma_prop_leaks,
     import_usage,
     parse_tsc_output,
     token_adherence,
@@ -81,3 +82,14 @@ def test_tsc_output_is_parsed_and_classified() -> None:
     only_unused = CompileResultSummary(errors=[errors[1]])
     assert only_unused.passes is True
     assert CompileResultSummary(errors=errors[:2]).passes is False
+
+
+def test_figma_vocabulary_on_component_tags_is_counted() -> None:
+    code = (
+        '<Header Platform="Desktop" State="Default" />\n'
+        '<Button variant="primary" isDisabled>Go</Button>\n'
+        '<div className="x" Data="y">\n'
+        '<Card heading="Heading" Align="Center" />'
+    )
+
+    assert figma_prop_leaks(code) == 3  # Platform, State, Align; the <div> is not a component

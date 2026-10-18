@@ -87,6 +87,8 @@
                     "type": "INSTANCE",
                     "componentId": "1:2",
                     "componentProperties": {
+                      "Variant": { "type": "VARIANT", "value": "Primary" },
+                      "State": { "type": "VARIANT", "value": "Default" },
                       "Label#7:0": { "type": "TEXT", "value": "Pay now" },
                       "Icon#7:1": {
                         "type": "INSTANCE_SWAP",

@@ -4,7 +4,8 @@ A compiler's last pass is the one that refuses to emit something broken. Three i
 
 1. the exact token count is within the budget (when one was given);
 2. no dangling references: every ``$token`` used in the TREE is defined in TOKENS, and every
-   ``<Component`` used in the TREE has an entry in COMPONENTS;
+   ``<Component`` (or ``<pattern Component``) used in the TREE is defined, either by an import
+   in IMPORTS or by an entry in COMPONENTS;
 3. the output is deterministic (checked by the test suite: two compiles are byte-identical).
 """
 
@@ -12,10 +13,12 @@ import re
 from dataclasses import dataclass
 
 from contextslice.emit import Bundle
+from contextslice.templates import import_names
 from contextslice.tokens import TokenCounter
 
 _TOKEN_REF = re.compile(r"\$([a-z0-9-]+)")
-_COMPONENT_REF = re.compile(r"^\s*<([A-Za-z0-9_]+)")
+_COMPONENT_REF = re.compile(r"^\s*<(?:pattern\s+)?([A-Za-z0-9_]+)")
+_ENTRY_NAME = re.compile(r"^([A-Za-z0-9_]+)")
 
 
 @dataclass(frozen=True)
@@ -40,11 +43,10 @@ def verify(bundle: Bundle, counter: TokenCounter, budget: int | None = None) -> 
     for name in sorted(used_tokens - defined_tokens):
         problems.append(f"dangling token reference ${name}")
 
-    defined_components = {
-        line.split(":", 1)[0]
-        for line in bundle.components.splitlines()[1:]
-        if not line.startswith(" ")
-    }
+    defined_components = set(import_names(bundle.imports.splitlines()[1:]))
+    for line in bundle.components.splitlines()[1:]:
+        if line and not line.startswith(" ") and (match := _ENTRY_NAME.match(line)):
+            defined_components.add(match.group(1))
     used_components = {
         match.group(1) for line in bundle.tree.splitlines() if (match := _COMPONENT_REF.match(line))
     }

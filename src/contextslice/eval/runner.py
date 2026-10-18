@@ -17,6 +17,7 @@ from contextslice.eval.arms import ARMS, BUDGETED_ARMS, Context, Expectations, b
 from contextslice.eval.metrics import (
     component_reuse,
     extract_tsx,
+    figma_prop_leaks,
     import_usage,
     token_adherence,
 )
@@ -52,6 +53,7 @@ class Sample:
     reuse_used: int = 0
     reuse_matched: int = 0
     raw_elements: int = 0
+    figma_props: int = 0  # Capitalised (Figma-vocabulary) attributes on component tags
     disallowed_modules: list[str] = field(default_factory=list)
     variable_refs: int = 0
     hardcoded_hex: int = 0
@@ -210,6 +212,7 @@ def _score(sample: Sample, code: str, expected: Expectations) -> None:
     sample.reuse_used = reuse.used
     sample.reuse_matched = reuse.matched
     sample.raw_elements = usage.raw_elements
+    sample.figma_props = figma_prop_leaks(code)
     sample.disallowed_modules = list(usage.disallowed_modules)
     sample.variable_refs = adherence.variable_refs
     sample.hardcoded_hex = adherence.hardcoded_hex

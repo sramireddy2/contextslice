@@ -22,6 +22,8 @@ _OTHER_IMPORT = re.compile(
     r"import\s+(?:[A-Za-z_$][\w$]*|\*\s+as\s+\w+)\s+from\s*[\"']([^\"']+)[\"']"
 )
 _JSX_TAG = re.compile(r"<([A-Z][A-Za-z0-9_]*)\b")
+_JSX_OPEN = re.compile(r"<([A-Z][A-Za-z0-9_.]*)\b([^<>]*)>")
+_CAPITALISED_ATTR = re.compile(r"(?:^|\s)([A-Z][A-Za-z0-9]*)=")
 _RAW_ELEMENT = re.compile(r"<(button|input|select|textarea|a|form|nav|header|footer)\b")
 _CSS_VAR = re.compile(r"var\(--sds-[a-z0-9-]+\)")
 _HEX = re.compile(r"#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
@@ -72,6 +74,16 @@ def import_usage(code: str) -> ImportUsage:
         raw_elements=len(_RAW_ELEMENT.findall(code)),
         disallowed_modules=tuple(sorted(set(disallowed))),
     )
+
+
+def figma_prop_leaks(code: str) -> int:
+    """Attributes written in Figma's vocabulary (``Variant="Stroke"``) on component tags.
+
+    React props are camelCase; a Capitalised attribute on a component is almost always a design
+    property name copied straight from the context. This is the direct measure of whether the
+    bundle taught the model the wrong vocabulary.
+    """
+    return sum(len(_CAPITALISED_ATTR.findall(attrs)) for _, attrs in _JSX_OPEN.findall(code))
 
 
 @dataclass(frozen=True)

@@ -5,10 +5,17 @@
 import figma from "figma";
 
 const instance = figma.selectedInstance;
+const rp = figma.helpers.react.renderProp;
+const variant = instance.getEnum("Variant", {
+  Primary: "primary",
+  Secondary: "secondary",
+});
 const label = instance.getString("Label");
+const icon = instance.getInstanceSwap("Icon");
+const isDisabled = instance.getEnum("State", { Disabled: true });
 
 export default {
   id: "Button",
   imports: ['import { Button } from "primitives";'],
-  example: figma.code`<Button>${label}</Button>`,
+  example: figma.code`<Button ${rp("variant", variant)} ${rp("isDisabled", isDisabled)} icon={${icon}}>${label}</Button>`,
 };

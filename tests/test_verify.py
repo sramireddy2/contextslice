@@ -5,16 +5,24 @@ from contextslice.verify import verify
 EMPTY = Rendered(lines=(), variable_lines={}, component_entries={})
 
 
-def bundle(tree: str, tokens: str = "", components: str = "") -> Bundle:
-    return Bundle(header="# h", components=components, tokens=tokens, tree=tree, rendered=EMPTY)
+def bundle(tree: str, tokens: str = "", components: str = "", imports: str = "") -> Bundle:
+    return Bundle(
+        header="# h",
+        imports=imports,
+        components=components,
+        tokens=tokens,
+        tree=tree,
+        rendered=EMPTY,
+    )
 
 
 def test_clean_bundle_passes() -> None:
     result = verify(
         bundle(
-            '## TREE\nFrame "A" fill=$color-x\n  <Button Label="Go">',
+            '## TREE\nFrame "A" fill=$color-x\n  <Button variant="primary"> "Go"\n  <pattern Grid>',
             tokens="## TOKENS\ncolor-x: #fff",
-            components='## COMPONENTS\nButton: import { Button } from "p";\n  <Button/>',
+            imports='## IMPORTS\nimport { Button } from "p";',
+            components="## COMPONENTS\nGrid (layout pattern, not an import): <Section />",
         ),
         ApproxTokenCounter(),
         budget=1000,

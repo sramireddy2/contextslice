@@ -122,7 +122,7 @@ def compile_context(
             scores = relevance_bfs(tree)
         else:
             scores = relevance_pagerank(design, graph or build_graph(design), target_id, request)
-        items = build_items(design, tree, counter, scores)
+        items = build_items(design, tree, counter, scores, sds_root=sds_root)
         # Fixed overhead = header + section headings: everything that is not an item.
         core_only = Selection(levels={tree.node_id: FULL})
         core_bundle = emit(
@@ -175,6 +175,7 @@ def compile_context(
         ledger=tuple(ledger),
         section_tokens={
             "header": counter.count(bundle.header),
+            "IMPORTS": counter.count(bundle.imports),
             "COMPONENTS": counter.count(bundle.components),
             "TOKENS": counter.count(bundle.tokens),
             "TREE": counter.count(bundle.tree),
