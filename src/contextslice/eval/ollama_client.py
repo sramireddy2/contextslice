@@ -47,7 +47,7 @@ class OllamaClient:
         base_url: str = DEFAULT_BASE_URL,
         *,
         transport: httpx.BaseTransport | None = None,
-        timeout: float = 3600.0,  # a slow CPU generation can take many minutes
+        timeout: float = 1800.0,  # a slow CPU generation can take many minutes; a hang, hours
     ) -> None:
         self._http = httpx.Client(base_url=base_url, timeout=timeout, transport=transport)
 

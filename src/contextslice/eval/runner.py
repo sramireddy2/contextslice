@@ -152,7 +152,15 @@ def run(
             continue
 
         started = time.perf_counter()
-        generation = generate(client, cache, config.model, prompt, rep)
+        try:
+            generation = generate(client, cache, config.model, prompt, rep)
+        except Exception as error:  # noqa: BLE001 - one lost sample must not lose the run
+            # A hung or crashed model request is recorded and skipped; re-running the same
+            # command later fills the gap from the cache or regenerates just this sample.
+            sample.note = f"{type(error).__name__}: {error}"[:200]
+            log(f"[{index}/{len(plan)}] {sample.id}: FAILED ({sample.note})")
+            _write_results(out_dir, samples)  # keep what we have, every time
+            continue
         elapsed = time.perf_counter() - started
         if not generation.cached:
             durations.append(elapsed)
