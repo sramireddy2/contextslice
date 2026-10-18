@@ -23,6 +23,7 @@ from contextslice.emit import Bundle
 from contextslice.eval.tasks import Task
 from contextslice.ir import DesignFile
 from contextslice.select import BudgetError
+from contextslice.templates import import_names
 from contextslice.tokens import TokenCounter
 
 ARMS = ("N", "F", "S", "C", "U")
@@ -50,8 +51,17 @@ class Expectations:
 
 
 def expectations_from(bundle: Bundle) -> Expectations:
-    """Importable components only: a layout pattern cannot be imported, so it cannot be reused."""
+    """The components the context told the model to import.
+
+    That is every Capitalised name in the IMPORTS block (layout primitives a pattern expands to
+    count: the context named them) plus any COMPONENTS heading that is not a layout pattern. A
+    pattern's own name is never importable, so it is never expected; lower-case imports such as
+    an image asset are not components and cannot be "used as a tag".
+    """
     components = {
+        name for name in import_names(bundle.imports.splitlines()[1:]) if name[:1].isupper()
+    }
+    components |= {
         match.group(1)
         for line in bundle.components.splitlines()[1:]
         if line and not line.startswith(" ") and "(layout pattern" not in line

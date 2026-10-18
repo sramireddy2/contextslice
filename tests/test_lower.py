@@ -96,10 +96,28 @@ def test_swapped_instances_become_elements() -> None:
     assert as_child == Lowered((), ())  # the nested instance has its own line in the tree
 
 
-def test_literal_elements_in_value_tables_are_rendered() -> None:
+def test_literal_elements_in_value_tables_are_kept_whole() -> None:
     lowered = lower_instance({"Asset": prop("VARIANT", "Image")}, TEMPLATE, label)
+    with_text = Template(
+        (),
+        "",
+        "",
+        rules=(
+            PropRule(
+                "Kind",
+                "enum",
+                "description",
+                "prop",
+                "description",
+                (("Text", Expr("jsxElement('<Small>{figma.string(\"Body\")}</Small>')")),),
+            ),
+        ),
+    )
 
-    assert lowered.attrs == ("asset={<Image />}",)
+    assert lowered.attrs == ('asset={<Image size="small" />}',)  # the template's attributes stay
+    assert lower_instance(
+        {"Kind": prop("VARIANT", "Text"), "Body": prop("TEXT", "Hi")}, with_text, label
+    ).attrs == ('description={<Small>"Hi"</Small>}',)
 
 
 def test_properties_the_template_never_reads_are_dropped() -> None:

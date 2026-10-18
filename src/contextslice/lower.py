@@ -37,8 +37,10 @@ from contextslice.text import quote
 
 _GET_STRING = re.compile(r'getString\(\s*"([^"]+)"\s*\)')
 _GET_SWAP = re.compile(r'getInstanceSwap\(\s*"([^"]+)"\s*\)')
-_JSX_ELEMENT = re.compile(r"""jsxElement\(\s*["'`]\s*<(\w+)""")
-_FIGMA_STRING = re.compile(r'figma\.string\(\s*"([^"]+)"\s*\)')
+# The literal element inside jsxElement('<Image alt="..." size="small" />'), kept whole: the
+# template chose those attributes and the component may require them.
+_JSX_ELEMENT = re.compile(r"""jsxElement\(\s*(["'`])\s*(<.*?)\s*\1""", re.DOTALL)
+_FIGMA_STRING = re.compile(r'\{?figma\.string\(\s*"([^"]+)"\s*\)\}?')
 
 SwapLabel = Callable[[str], str]  # component id -> the name to print for a swapped-in instance
 Properties = Mapping[str, Mapping[str, Any]]  # Figma componentProperties: name -> {type, value}
@@ -119,12 +121,13 @@ def _resolve(
         if rule.kind == "swap" and re.search(r"\b" + re.escape(rule.variable) + r"\b", text):
             return _swapped(props.get(rule.figma_prop, {}).get("value"), swap_label)
     if (match := _JSX_ELEMENT.search(text)) is not None:
-        tag = match.group(1)
-        inner = _FIGMA_STRING.search(text)  # `<TextSmall>{figma.string("Body")}</TextSmall>`
-        other = props.get(inner.group(1), {}).get("value") if inner else None
-        if other not in (None, ""):
-            return f"{{<{tag}>{quote(str(other))}</{tag}>}}"
-        return _element(tag)
+        element = re.sub(r"\s+", " ", match.group(2))
+
+        def design_text(inner: re.Match) -> str:  # `<TextSmall>{figma.string("Body")}</TextSmall>`
+            other = props.get(inner.group(1), {}).get("value")
+            return quote(str(other)) if other not in (None, "") else ""
+
+        return "{" + _FIGMA_STRING.sub(design_text, element) + "}"
     return None  # an expression we cannot read statically: omit rather than invent
 
 
