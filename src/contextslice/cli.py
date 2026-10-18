@@ -189,6 +189,9 @@ def compile_command(
     request: Annotated[
         str | None, typer.Option(help="The developer's request; mentioned names get priority.")
     ] = None,
+    optimizer: Annotated[
+        str, typer.Option(help="How P7 is solved: exact (integer program) | greedy.")
+    ] = "exact",
     out: Annotated[Path | None, typer.Option(help="Write the context bundle to this file.")] = None,
     show: Annotated[bool, typer.Option("--show", help="Print the whole bundle.")] = False,
     snapshots_dir: SnapshotsDir = Path("snapshots"),
@@ -202,6 +205,9 @@ def compile_command(
         raise typer.Exit(code=1)
     if selector not in ("ppr", "bfs"):
         console.print("[red]--selector must be ppr or bfs.[/red]")
+        raise typer.Exit(code=1)
+    if optimizer not in ("exact", "greedy"):
+        console.print("[red]--optimizer must be exact or greedy.[/red]")
         raise typer.Exit(code=1)
 
     store = SnapshotStore(snapshots_dir)
@@ -227,6 +233,7 @@ def compile_command(
             component_detail=components,  # type: ignore[arg-type]  (validated above)
             budget=budget,
             selector=selector,
+            optimizer=optimizer,
             request=request,
         )
 
@@ -339,6 +346,7 @@ def eval_command(
         bool, typer.Option("--dry-run", help="Build contexts and prompts only; no generation.")
     ] = False,
     typecheck: Annotated[bool, typer.Option(help="Run tsc over the generated files.")] = True,
+    optimizer: Annotated[str, typer.Option(help="P7 optimizer for S/C: exact | greedy.")] = "exact",
     snapshots_dir: SnapshotsDir = Path("snapshots"),
     sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
         "vendor/sds"
@@ -370,6 +378,7 @@ def eval_command(
         task_ids=[t.id for t in task_list],
         dry_run=dry_run,
         typecheck=typecheck,
+        optimizer=optimizer,
     )
     samples = run(
         design,
@@ -385,6 +394,94 @@ def eval_command(
     )
     _render_eval_summary(samples, dry_run)
     console.print(f"\nresults written to {out}")
+
+
+@app.command()
+def gap(
+    node: Annotated[str | None, typer.Option(help="Target node id.")] = None,
+    name: Annotated[str | None, typer.Option(help="Target by name (see `slice`).")] = None,
+    tasks: Annotated[bool, typer.Option("--tasks", help="All evaluation tasks instead.")] = False,
+    budgets: Annotated[str, typer.Option(help="Comma-separated budgets.")] = "1000,2000",
+    selectors: Annotated[str, typer.Option(help="Comma-separated: ppr, bfs.")] = "ppr,bfs",
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+) -> None:
+    """Optimality gap of the greedy selector against an exact ILP (SciPy/HiGHS)."""
+    from contextslice.gap import measure_gap
+    from contextslice.select import BudgetError
+
+    design, graph, counter = _load_workspace(snapshots_dir, sds_dir)
+    if tasks:
+        from contextslice.eval.tasks import load_tasks
+
+        targets = [(task.node_id, task.request) for task in load_tasks()]
+    else:
+        targets = [(_resolve_target(design, node, name), None)]
+
+    table = Table(title="Greedy vs exact ILP (objective under the selector's cost model)")
+    for column in (
+        "target",
+        "B",
+        "selector",
+        "greedy",
+        "ILP",
+        "gap",
+        "tokens g/ILP",
+        "cuts",
+        "vars",
+        "ms",
+    ):
+        table.add_column(column, justify="right")
+    gaps = []
+    for target_id, request in targets:
+        for budget in (int(b) for b in budgets.split(",") if b.strip()):
+            for selector in (s.strip() for s in selectors.split(",") if s.strip()):
+                try:
+                    report = measure_gap(
+                        design,
+                        graph,
+                        target_id,
+                        counter,
+                        budget,
+                        selector=selector,
+                        request=request,
+                        sds_root=sds_dir if sds_dir.exists() else None,
+                    )
+                except BudgetError as error:
+                    console.print(f"[yellow]{target_id} B={budget}: {error}[/yellow]")
+                    continue
+                gaps.append(report.gap)
+                table.add_row(
+                    design.path_of(target_id).split(" / ")[-2][:28],
+                    str(budget),
+                    selector,
+                    f"{report.greedy_objective:.3f}",
+                    f"{report.ilp_objective:.3f}",
+                    f"{report.gap:.1%}",
+                    f"{report.greedy_tokens}/{report.ilp_tokens}",
+                    str(report.budget_cuts),
+                    str(report.variables),
+                    f"{report.solve_seconds * 1000:.0f}",
+                )
+    console.print(table)
+    if gaps:
+        console.print(
+            f"mean gap {sum(gaps) / len(gaps):.1%}, max {max(gaps):.1%} over {len(gaps)} cases"
+        )
+
+
+def _load_workspace(snapshots_dir: Path, sds_dir: Path):
+    store = SnapshotStore(snapshots_dir)
+    manifest = store.latest()
+    if manifest is None:
+        console.print("[red]No snapshot found.[/red] Run `contextslice ingest` first.")
+        raise typer.Exit(code=1)
+    with console.status("Building IR and graph..."):
+        design = build_design_file(store.load_document(manifest), sds_dir)
+        graph = build_graph(design)
+    return design, graph, default_counter()
 
 
 @app.command()

@@ -183,3 +183,51 @@ under an omitted parent); it now lands at 189 with 0 repairs.
 A line now reads `<NavigationPill isSelected> "Products"` instead of
 `<NavigationPill Label="Products" State=Active>`, and `<Header>` instead of
 `<Header Platform=Desktop State=Default>`.
+
+# Optimality gap of the greedy selector (Day 8, 2026-10-18)
+
+`contextslice gap --tasks`: the shipped greedy against an exact integer program over the same
+model (same items, levels, precedence, dependency and one-time section costs, same objective),
+solved with HiGHS via SciPy. Both selections are compared as exactly feasible rendered bundles.
+Objective values are the model objective (PageRank scores sum to 1, depth-decay scores do not).
+
+| screen | B | selector | greedy | optimum | gap | tokens greedy/ILP | solve ms |
+|---|---|---|---|---|---|---|---|
+| About | 1000 | ppr | 0.194 | 0.194 | 0.2% | 955/964 | 68 |
+| About | 1000 | bfs | 19.471 | 20.259 | 3.9% | 932/939 | 79 |
+| Landing | 1000 | ppr | 0.423 | 0.423 | 0.0% | 930/927 | 33 |
+| Landing | 1000 | bfs | 19.135 | 19.650 | 2.6% | 933/929 | 315 |
+| Pricing | 1000 | ppr | 0.344 | 0.344 | 0.0% | 957/956 | 172 |
+| Pricing | 1000 | bfs | 19.956 | 22.375 | 10.8% | 932/948 | 61 |
+| Product | 1000 | ppr | 0.200 | 0.255 | **21.5%** | 932/968 | 62 |
+| Product | 1000 | bfs | 18.435 | 20.306 | 9.2% | 914/897 | 83 |
+| Contact | 1000 | ppr | 0.304 | 0.304 | 0.0% | 927/941 | 101 |
+| Contact | 1000 | bfs | 16.981 | 20.043 | 15.3% | 914/911 | 51 |
+| Waitlist | 1000 | ppr | 0.310 | 0.310 | 0.0% | 947/942 | 22 |
+| Waitlist | 1000 | bfs | 18.037 | 19.834 | 9.1% | 917/931 | 167 |
+| Article | 1000 | ppr | 0.157 | 0.157 | 0.1% | 951/937 | 20 |
+| Article | 1000 | bfs | 19.331 | 19.762 | 2.2% | 928/926 | 42 |
+| Home | 1000 | ppr | 0.444 | 0.444 | 0.0% | 966/974 | 43 |
+| Home | 1000 | bfs | 19.400 | 19.991 | 3.0% | 924/924 | 285 |
+| all eight | 2000 | ppr | | | 0.0-0.1% | | 11-52 |
+| all eight | 2000 | bfs | | | 0.0-0.2% | | 11-71 |
+
+Mean 2.4%, maximum 21.5%, over 32 cases; the ILP needed no budget tightening in any of them
+(the 2% margin covers the model's inexactness). Models have 147-240 binary variables.
+
+What the 21.5% is: on the product screen the single most valuable item, the price block
+(`<TextPrice label="/ mo" currency="$" price="50">` and its `Frame "Price"`), sits under three
+near-worthless wrapper frames (values 0.0001-0.0002). The greedy only considers an item once
+its parent is shown, each wrapper's own stub is a terrible deal on its own, so the path never
+opens and the budget goes to `<HeaderAuth>` (value 0.0003), an `<IconButton>` and an icon.
+Precedence myopia, the textbook failure of greedy on tree knapsacks.
+
+The textbook remedy, pricing each move as the path through its omitted ancestors (gain and
+cost of the spine included), was implemented and measured: product/ppr improved to 9.7%, but
+the mean rose to 4.8% and About/bfs became a new 21.4% case. Neither greedy dominates.
+
+Decision (ADR-0007): since the exact solve costs about a tenth of a compile at this size,
+`compile` now solves P7 exactly by default and keeps the original greedy as the fallback.
+Whole-compile time on About at B=1000: greedy 0.48 s, exact 0.50 s (IR and graph already
+built); the exact bundle is 927 tokens in 24 lines where the greedy's was 922 in 21. Five
+consecutive solves of the same model return the identical selection.

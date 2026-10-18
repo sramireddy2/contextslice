@@ -15,8 +15,10 @@ the plan for that is under *Finishing* below, then *Next* and *Stretch*.
    through the official SDK (optional extra `contextslice[mcp]`), console output on stderr,
    expected failures as `ok=false` results. Verified end to end with the SDK's stdio client
    against the real snapshot (compile 2.9 s, 922 tokens verified under B=1000).
-3. **Exact ILP reference solver** (`scipy.optimize.milp`) to measure the greedy selector's
-   optimality gap on the evaluation tasks.
+3. **Exact ILP solver** (done, [ADR-0007](adr/0007-exact-ilp-as-the-production-selector.md)):
+   `contextslice gap --tasks` measured the greedy at 2.4% below optimum on average, 21.5% at
+   worst (precedence myopia on the product screen); the exact solve costs ~0.1 s, so it is now
+   the default optimizer and the greedy the fallback.
 4. Machine-time runs in the background: `--reps 2` and the no-Code-Connect regime.
 5. Write-up refresh.
 

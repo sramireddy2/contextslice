@@ -15,6 +15,14 @@ worse; here a paid dependency makes dependents *cheaper*, so whenever a dependen
 paid, every move that needed it is re-pushed with a fresh key. That keeps the lazy evaluation
 exact instead of silently suboptimal.
 
+Measured against the exact solver (ilp.py, ``contextslice gap``) this greedy is optimal in
+15 of 16 PageRank cases and loses 2-15% in the depth-decay ones; its one bad case (21.5%) is
+precedence myopia: a valuable price block three near-worthless wrapper frames deep is never
+reached because each wrapper's own stub looks like a bad deal. Pricing moves as paths through
+the omitted ancestors fixes that case but worsens the average (4.8% vs 2.4%), so it was not
+kept. Since the exact solver takes ~100 ms here, compile.py uses it by default and this greedy
+is the fallback (ADR-0007).
+
 Rendered token costs are close to additive (one item per line) but not exactly, so the caller
 finishes with an exact count and a repair loop (see compile.py).
 """
@@ -317,6 +325,33 @@ def select(
 
     selection.estimated_tokens = spent
     return selection
+
+
+def selection_value(items: dict[str, Item], selection: Selection) -> float:
+    """The objective the selector maximises, evaluated on a finished selection.
+
+    Kept as one function so the greedy and the exact reference solver (ilp.py) are scored
+    with the same rule: a NODE earns STUB_SHARE of its value as a stub and the rest in full;
+    components and slots earn all of it in full; a component's JSX example earns
+    EXAMPLE_SHARE of the value of every item that uses it.
+    """
+    users: dict[str, float] = {}
+    for item in items.values():
+        for key in item.mappings:
+            users[key] = users.get(key, 0.0) + item.value
+    total = 0.0
+    for item in items.values():
+        level = selection.levels.get(item.node_id, OMIT)
+        if level == OMIT:
+            continue
+        if item.role is Role.NODE:
+            total += item.value * (STUB_SHARE + ((1 - STUB_SHARE) if level == FULL else 0.0))
+        else:
+            total += item.value
+    for key, detail in selection.component_detail.items():
+        if detail == EXAMPLE:
+            total += EXAMPLE_SHARE * users.get(key, 0.0)
+    return total
 
 
 def select_all(root: ContextNode, component_detail: str = EXAMPLE) -> Selection:

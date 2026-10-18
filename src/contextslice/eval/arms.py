@@ -82,6 +82,7 @@ def build_contexts(
     counter: TokenCounter,
     sds_root: Path,
     arms: tuple[str, ...] = ARMS,
+    optimizer: str = "exact",
 ) -> tuple[list[Context], Expectations]:
     contexts: list[Context] = []
 
@@ -116,6 +117,7 @@ def build_contexts(
                     graph=graph,
                     budget=budget,
                     selector=selector,
+                    optimizer=optimizer,
                     request=task.request,
                 )
             except BudgetError as error:
