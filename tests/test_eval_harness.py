@@ -80,3 +80,56 @@ def test_truncate_outline_keeps_whole_lines_and_only_referenced_tokens(toy_desig
     assert counter.count(small) <= full_tokens - 10
     assert small.splitlines()[-1] in flat.bundle.tree.splitlines()  # no half lines
     assert "## TOKENS" not in tiny or "$" in tiny  # tokens only when a kept line references one
+
+
+def test_rescore_reads_old_generations_under_current_expectations(
+    toy_design, toy_graph, tmp_path
+) -> None:
+    from contextslice.eval.runner import rescore
+
+    run_dir = tmp_path / "old"
+    (run_dir / "generations").mkdir(parents=True)
+    row = {
+        "id": "t_C1000_r0",
+        "task_id": "t",
+        "arm": "C",
+        "budget": 1000,
+        "rep": 0,
+        "context_tokens": 900,
+        "compile_seconds": 0.1,
+        "prompt_tokens_estimate": 1000,
+        "generated": True,
+        "extracted": True,
+        "reuse_expected": 9,  # an old denominator that counted layout patterns
+        "reuse_used": 1,
+        "reuse_matched": 1,
+        "prompt_tokens": 1010,
+        "output_tokens": 300,
+    }
+    (run_dir / "results.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    (run_dir / "generations" / "t_C1000_r0.tsx").write_text(
+        """import { Button } from "primitives";
+export default function Screen() {
+  return <Button Label="x" />;
+}
+""",
+        encoding="utf-8",
+    )
+
+    samples = rescore(
+        toy_design,
+        toy_graph,
+        [TASK],
+        run_dir,
+        tmp_path / "new",
+        ApproxTokenCounter(),
+        TOY_SDS,
+        typecheck=False,
+    )
+
+    assert samples[0].reuse_expected == 2  # Button + IconStar under the current emitter, not 9
+    assert (samples[0].reuse_matched, samples[0].figma_props) == (1, 1)
+    assert samples[0].prompt_tokens == 1010  # generation statistics carry over
+    config = json.loads((tmp_path / "new" / "config.json").read_text(encoding="utf-8"))
+    assert config["rescored_from"].endswith("old")
+    assert (tmp_path / "new" / "results.jsonl").exists()

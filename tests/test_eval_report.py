@@ -93,3 +93,13 @@ def test_markdown_report_lists_the_preregistered_comparisons() -> None:
 
     assert "| C@1000 vs F@1000 | reuse_recall | 3 |" in text
     assert default_comparisons(ROWS)[0] == (("C", 1000), ("F", 1000))
+
+
+def test_a_baseline_run_is_compared_arm_by_arm_without_touching_the_preregistered_pairs() -> None:
+    before = [row("t1", "C", 1000, 0, 1, 2, 6, False), row("t2", "C", 1000, 0, 1, 1, 4, False)]
+
+    text = render_markdown(ROWS, "After", baseline=before, baseline_label="r1")
+
+    assert "| C@1000 vs C:r1@1000 | reuse_recall | 2 |" in text  # the two tasks both runs have
+    assert "| C@1000 vs F@1000 | reuse_recall | 3 |" in text  # unchanged
+    assert "C:r1@1000 vs" not in text  # the baseline never appears on the left

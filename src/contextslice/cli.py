@@ -388,17 +388,69 @@ def eval_command(
 
 
 @app.command()
+def rescore(
+    run: Annotated[Path, typer.Option(help="Run to re-score (results.jsonl + generations/).")],
+    out: Annotated[Path, typer.Option(help="Where to write the re-scored results.")],
+    typecheck: Annotated[bool, typer.Option(help="Run tsc over the generated files.")] = True,
+    snapshots_dir: SnapshotsDir = Path("snapshots"),
+    sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
+        "vendor/sds"
+    ),
+) -> None:
+    """Re-score an earlier run's generations under the current compiler's expectations.
+
+    Needed whenever the emitter changes what counts as an expected component, so that an old
+    run and a new one share the same denominators before `report --baseline` compares them.
+    """
+    from contextslice.eval.runner import rescore as rescore_run
+    from contextslice.eval.tasks import load_tasks
+
+    store = SnapshotStore(snapshots_dir)
+    manifest = store.latest()
+    if manifest is None:
+        console.print("[red]No snapshot found.[/red] Run `contextslice ingest` first.")
+        raise typer.Exit(code=1)
+    with console.status("Building IR and graph..."):
+        design = build_design_file(store.load_document(manifest), sds_dir)
+        graph = build_graph(design)
+
+    samples = rescore_run(
+        design,
+        graph,
+        load_tasks(),
+        run,
+        out,
+        default_counter(),
+        sds_dir,
+        typecheck=typecheck,
+        log=lambda message: console.print(message, markup=False, highlight=False),
+    )
+    _render_eval_summary(samples, False)
+    console.print(f"\nre-scored results written to {out}")
+
+
+@app.command()
 def report(
     run: Annotated[Path, typer.Option(help="Run directory with results.jsonl.")] = Path(
         "eval/runs/latest"
     ),
+    baseline: Annotated[
+        Path | None,
+        typer.Option(help="An earlier run to compare against, arm by arm (before/after)."),
+    ] = None,
+    baseline_label: Annotated[str, typer.Option(help="Suffix for the baseline's arms.")] = "before",
 ) -> None:
     """Per-arm means and paired comparisons for a finished run; also writes report.md."""
     from contextslice.eval.report import render_markdown
     from contextslice.eval.runner import load_results
 
     rows = load_results(run)
-    markdown = render_markdown(rows, f"ContextSlice evaluation: {run.name}")
+    markdown = render_markdown(
+        rows,
+        f"ContextSlice evaluation: {run.name}",
+        baseline=load_results(baseline) if baseline else None,
+        baseline_label=baseline_label,
+    )
     (run / "report.md").write_text(markdown, encoding="utf-8", newline="\n")
     console.print(markdown, markup=False, highlight=False)
     console.print(f"\nwritten to {run / 'report.md'}")

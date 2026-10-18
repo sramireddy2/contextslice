@@ -219,14 +219,40 @@ def format_label(key: ArmKey) -> str:
     return f"{arm}@{budget}" if budget is not None else arm
 
 
-def render_markdown(rows: list[Row], title: str) -> str:
+def tag_baseline(rows: list[Row], label: str) -> list[Row]:
+    """Rows of an earlier run, with their arm renamed ``C`` -> ``C:label`` so they can sit in
+    the same tables without matching the pre-registered comparisons."""
+    return [{**row, "arm": f"{row['arm']}:{label}"} for row in rows]
+
+
+def baseline_comparisons(
+    rows: list[Row], tagged: list[Row], label: str
+) -> list[tuple[ArmKey, ArmKey]]:
+    """Each current arm against the same arm in the baseline: the before/after of a change."""
+    before = {arm_key(row) for row in tagged}
+    pairs = []
+    for arm, budget in sorted({arm_key(row) for row in rows}, key=lambda k: (k[0], k[1] or 0)):
+        if (f"{arm}:{label}", budget) in before:
+            pairs.append(((arm, budget), (f"{arm}:{label}", budget)))
+    return pairs
+
+
+def render_markdown(
+    rows: list[Row],
+    title: str,
+    *,
+    baseline: list[Row] | None = None,
+    baseline_label: str = "before",
+) -> str:
+    tagged = tag_baseline(baseline, baseline_label) if baseline else []
+    everything = rows + tagged
     lines = [f"# {title}", ""]
     lines.append("## Per-arm means (task-level)")
     lines.append("")
     header = ["arm", "n", "extracted", *METRICS]
     lines.append("| " + " | ".join(header) + " |")
     lines.append("|" + "---|" * len(header))
-    for summary in summarize(rows):
+    for summary in summarize(everything):
         cells = [
             format_label((summary.arm, summary.budget)),
             str(summary.samples),
@@ -239,9 +265,10 @@ def render_markdown(rows: list[Row], title: str) -> str:
     lines.append("")
     lines.append("| comparison | metric | tasks | mean diff | 95% CI | wins/losses |")
     lines.append("|---|---|---|---|---|---|")
-    for arm_a, arm_b in default_comparisons(rows):
+    comparisons = default_comparisons(rows) + baseline_comparisons(rows, tagged, baseline_label)
+    for arm_a, arm_b in comparisons:
         for metric in PAIRED_METRICS:
-            result = paired(rows, metric, arm_a, arm_b)
+            result = paired(everything, metric, arm_a, arm_b)
             if result is None:
                 continue
             lines.append(

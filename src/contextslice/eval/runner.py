@@ -7,13 +7,21 @@ every generated file, and one JSON record per sample in ``results.jsonl``.
 import json
 import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
 import networkx as nx
 
-from contextslice.eval.arms import ARMS, BUDGETED_ARMS, Context, Expectations, build_contexts
+from contextslice.compile import compile_context
+from contextslice.eval.arms import (
+    ARMS,
+    BUDGETED_ARMS,
+    Context,
+    Expectations,
+    build_contexts,
+    expectations_from,
+)
 from contextslice.eval.metrics import (
     component_reuse,
     extract_tsx,
@@ -180,28 +188,94 @@ def run(
         )
 
     if config.typecheck and sources and not config.dry_run:
-        baseline = baseline_errors(sds_root)
-        log(
-            f"type-checking {len(sources)} generated files against the SDS project "
-            f"(baseline: {len(baseline)} pre-existing errors in SDS itself, ignored)..."
-        )
-        (out_dir / "tsc_baseline.json").write_text(
-            json.dumps([asdict(e) for e in baseline], indent=1) + "\n",
-            encoding="utf-8",
-            newline="\n",
-        )
-        results = type_check(sds_root, sources)
-        for sample in samples:
-            if sample.id in results:
-                summary = results[sample.id]
-                sample.tsc_checked = True
-                sample.tsc_pass = summary.passes
-                sample.tsc_errors = dict(summary.by_kind)
+        _type_check_all(samples, sources, sds_root, out_dir, log)
+    _write_results(out_dir, samples)
+    return samples
 
+
+def rescore(
+    design: DesignFile,
+    graph: nx.MultiDiGraph,
+    tasks: list[Task],
+    run_dir: Path,
+    out_dir: Path,
+    counter: TokenCounter,
+    sds_root: Path,
+    *,
+    typecheck: bool = True,
+    log: Callable[[str], None] = print,
+) -> list[Sample]:
+    """Re-score an earlier run's generations under the *current* compiler's expectations.
+
+    The expected component set comes from the unbudgeted bundle, so when the emitter changes
+    (for instance when layout patterns stop counting as components) an old run has to be
+    re-scored before its numbers can sit next to new ones. Nothing is regenerated: the model's
+    answers are read back from the run directory and the generation statistics carry over.
+    """
+    by_id = {task.id: task for task in tasks}
+    names = {f.name for f in fields(Sample)}
+    expectations: dict[str, Expectations] = {}
+    samples: list[Sample] = []
+    sources: dict[str, str] = {}
+    for row in load_results(run_dir):
+        sample = Sample(**{key: value for key, value in row.items() if key in names})
+        if sample.task_id not in expectations:
+            task = by_id[sample.task_id]
+            unbudgeted = compile_context(
+                design, task.node_id, counter, sds_root=sds_root, graph=graph
+            )
+            expectations[sample.task_id] = expectations_from(unbudgeted.bundle)
+        path = run_dir / "generations" / f"{sample.id}.tsx"
+        if sample.extracted and path.exists():
+            code = path.read_text(encoding="utf-8")
+            sources[sample.id] = code
+            _score(sample, code, expectations[sample.task_id])
+        samples.append(sample)
+    log(f"re-scored {len(sources)} generations from {run_dir} under current expectations")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    config_path = run_dir / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
+    config["rescored_from"] = run_dir.as_posix()
+    (out_dir / "config.json").write_text(
+        json.dumps(config, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
+    if typecheck and sources:
+        _type_check_all(samples, sources, sds_root, out_dir, log)
+    _write_results(out_dir, samples)
+    return samples
+
+
+def _type_check_all(
+    samples: list[Sample],
+    sources: dict[str, str],
+    sds_root: Path,
+    out_dir: Path,
+    log: Callable[[str], None],
+) -> None:
+    baseline = baseline_errors(sds_root)
+    log(
+        f"type-checking {len(sources)} generated files against the SDS project "
+        f"(baseline: {len(baseline)} pre-existing errors in SDS itself, ignored)..."
+    )
+    (out_dir / "tsc_baseline.json").write_text(
+        json.dumps([asdict(e) for e in baseline], indent=1) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    results = type_check(sds_root, sources)
+    for sample in samples:
+        if sample.id in results:
+            summary = results[sample.id]
+            sample.tsc_checked = True
+            sample.tsc_pass = summary.passes
+            sample.tsc_errors = dict(summary.by_kind)
+
+
+def _write_results(out_dir: Path, samples: list[Sample]) -> None:
     with (out_dir / "results.jsonl").open("w", encoding="utf-8", newline="\n") as fh:
         for sample in samples:
             fh.write(json.dumps(asdict(sample), ensure_ascii=False) + "\n")
-    return samples
 
 
 def _score(sample: Sample, code: str, expected: Expectations) -> None:
