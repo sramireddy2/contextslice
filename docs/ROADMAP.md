@@ -19,8 +19,19 @@ the plan for that is under *Finishing* below, then *Next* and *Stretch*.
    `contextslice gap --tasks` measured the greedy at 2.4% below optimum on average, 21.5% at
    worst (precedence myopia on the product screen); the exact solve costs ~0.1 s, so it is now
    the default optimizer and the greedy the fallback.
-4. Machine-time runs in the background: `--reps 2` and the no-Code-Connect regime.
-5. Write-up refresh.
+4. **No-Code-Connect regime** (done, `eval/runs/nosub-r1`, see docs/eval.md): without mappings
+   the selector buys no component reuse over a flat truncation (0.21 vs 0.22 recall at B=4000);
+   the compiled outline only reduces wrong-prop errors. The advantage depends on mappings.
+   The `--reps 2` repetition was not run.
+5. Write-up refresh: kept current as each step landed (README, docs/eval.md, docs/census.md,
+   ADR-0005..0007).
+
+## Next, after the finishing work
+
+1. **Infer mappings for unmapped design systems**: match Figma component names to code
+   exports (name similarity, prop-name overlap) and feed the result through the same P4/P4b
+   passes. `nosub-r1` says this, not better selection, is the lever when Code Connect is absent.
+2. `--reps 2` on the mapped regime with the exact optimizer, for error bars across seeds.
 
 ## Next (cheap, in order of value)
 

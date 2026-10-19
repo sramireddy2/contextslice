@@ -63,8 +63,15 @@ went from up to 9.6 per file to zero, and precision rose to 1.00 everywhere. The
 arm now type-checks clean on 5 of 8 screens at B=1000. PageRank relevance still does *not*
 measurably beat plain depth-decay at these budgets. What remains is the model not copying an
 import block it was given (one screen accounts for 69 of the missing names at B=2000) and,
-rarely, turning structure words into tags. Full tables, the pre-registered comparisons, the
-before/after runs and the limitations are in [docs/eval.md](docs/eval.md).
+rarely, turning structure words into tags.
+
+The advantage **depends on design-to-code mappings**. With Code Connect switched off (run
+`nosub-r1`, budgets of 2,000 and 4,000 against 3.7k-6.4k-token outlines), the compiled context
+and a flat truncation are indistinguishable on component reuse (0.21 vs 0.22 recall at 4,000),
+both barely above no context (0.12); the selector cannot surface names the context never
+contained. The compiled outline still makes fewer wrong-prop errors (2.1 vs 8.9 per file).
+Full tables, the pre-registered comparisons, the before/after runs and the limitations are in
+[docs/eval.md](docs/eval.md).
 
 ## Status
 

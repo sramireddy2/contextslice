@@ -299,3 +299,58 @@ Two caveats specific to this run: the laptop idled to sleep twice under it (36-m
 60-minute stalls visible in Ollama's log), which is why the runner now records a failed sample
 and continues; and two generations have syntax errors (`landing_C1000`, `product_C2000`),
 which the type-checker now isolates before checking the rest (see `lower-r1`, point 5).
+
+## Results: the no-Code-Connect regime `nosub-r1` (8 screens x N/F/S/C x B in {2000, 4000}; 2026-10-19)
+
+The question: does the selector's value survive when the design system has **no** code
+mappings, which is where most real design systems live? P4 (Code Connect substitution) is off
+for S, C and U, so the compiled context is the design's own outline, budgeted by the selector;
+F is the same outline truncated in tree order; N has nothing. Unbudgeted outlines are 3,716 to
+6,368 tokens per screen, so both budgets bind; an unbudgeted arm would overflow the model's
+8,192-token window on two screens and was left out. Ground truth for reuse is still the mapped
+component set, so recall is comparable with the other runs. First run with the exact optimizer
+(ADR-0007). 56 samples, no failures, four hours.
+
+Run: `uv run contextslice eval --no-substitute --arms N,F,S,C --budgets 2000,4000 --out eval/runs/nosub-r1`.
+
+| arm | reuse recall | precision | missing / file | type / file | output tokens | truncated | gen. seconds |
+|---|---|---|---|---|---|---|---|
+| N | 0.12 | 0.30 | 6.5 | 1.8 | 431 | 0 | 71 |
+| F@2000 | 0.18 | 0.38 | 8.5 | 4.4 | 675 | 0 | 521 |
+| F@4000 | 0.22 | 0.41 | 12.4 | 8.9 | 1,041 | 0.12 | 417 |
+| S@2000 | 0.20 | 0.40 | 23.2 | 8.6 | 1,413 | 0.12 | 332 |
+| S@4000 | 0.23 | 0.49 | 6.4 | 4.0 | 1,166 | 0.25 | 419 |
+| C@2000 | 0.17 | 0.39 | 15.0 | 4.6 | 948 | 0 | 240 |
+| C@4000 | 0.21 | 0.49 | 14.5 | 2.1 | 1,151 | 0.25 | 423 |
+
+Pre-registered comparisons: C@2000 vs F@2000 recall -0.01 [-0.10, +0.08] (3/3); C@4000 vs
+F@4000 recall -0.01 [-0.15, +0.11] (4/4), precision +0.08 [-0.08, +0.23], type errors -6.75
+[-12.62, -0.12] (1/7); C vs S recall -0.03 and -0.02 (intervals spanning zero); C@4000 vs N
+recall +0.09 [+0.03, +0.15], precision +0.20 [+0.03, +0.35].
+
+What the numbers say:
+
+1. **Without mappings, selection buys no component reuse.** The compiled outline and the flat
+   truncation are indistinguishable at both budgets (differences of 0.01, wins and losses
+   even), and both sit barely above the no-context arm. The selector cannot surface component
+   names the context never contained; what little reuse there is comes from the design's own
+   layer names and the model's prior.
+2. **The load-bearing pass is Code Connect substitution.** In the mapped regime the same
+   compiler reaches 0.50-0.75 recall at 1.00 precision; here 0.17-0.23 at 0.39-0.49. The
+   selector's contribution, measured separately by the optimality gap (census), is fitting the
+   *mapped* context into a budget, not conjuring names. ContextSlice's advantage therefore
+   depends on design-to-code mappings existing; for an unmapped system the next lever is
+   inferring them (matching Figma component names to code exports), not better selection.
+3. **The compiled outline is still a better outline.** At B=4000 it produces fewer wrong-prop
+   errors than the flat truncation (2.1 vs 8.9 per file, 1/7) and higher precision, which is
+   consistent with it carrying the TOKENS definitions and whole subtrees rather than whatever
+   the first 4,000 tokens happened to contain. It also costs more missing names, because the
+   model turns more of the structure it sees into invented tags.
+4. **Without components the model writes the screen by hand.** Output length is 1.5-2x the
+   mapped regime, a quarter of the 4,000-token samples hit the 2,000-token output cap, and
+   generation time per sample roughly doubles. Part of the token saving ContextSlice shows in
+   the mapped regime is on the *output* side, which no prompt-side measure captures.
+
+Limitations as before (n = 8, one repetition, one 7B model), plus: an unbudgeted outline arm
+is missing, so "does more outline help?" is answered only between 2,000 and 4,000 (it does,
+slightly: +0.04 recall for both selectors).
