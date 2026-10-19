@@ -133,3 +133,23 @@ export default function Screen() {
     config = json.loads((tmp_path / "new" / "config.json").read_text(encoding="utf-8"))
     assert config["rescored_from"].endswith("old")
     assert (tmp_path / "new" / "results.jsonl").exists()
+
+
+def test_the_no_code_connect_regime_keeps_the_mapped_ground_truth(toy_design, toy_graph) -> None:
+    from contextslice.eval.arms import build_contexts
+
+    contexts, expected = build_contexts(
+        toy_design,
+        toy_graph,
+        TASK,
+        [10_000],
+        ApproxTokenCounter(),
+        TOY_SDS,
+        ("C", "U"),
+        substitute=False,
+    )
+    texts = {context.arm: context.text for context in contexts}
+
+    assert "<Button" not in texts["U"] and "<Button" not in texts["C"]  # the model sees no mapping
+    assert 'Instance "Pay button" of "Variant=Primary"' in texts["U"]  # only the design's own words
+    assert expected.components == {"Button", "IconStar"}  # but is scored against the real set

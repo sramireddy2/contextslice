@@ -83,12 +83,22 @@ def build_contexts(
     sds_root: Path,
     arms: tuple[str, ...] = ARMS,
     optimizer: str = "exact",
+    substitute: bool = True,  # False: the "no Code Connect" regime (P4 off for S, C and U)
 ) -> tuple[list[Context], Expectations]:
     contexts: list[Context] = []
 
     started = time.perf_counter()
-    unbudgeted = compile_context(design, task.node_id, counter, sds_root=sds_root, graph=graph)
-    expectations = expectations_from(unbudgeted.bundle)
+    # Ground truth is always the mapped bundle's component set: the screen is built from the
+    # same components whether or not the model is told their code names.
+    mapped = compile_context(design, task.node_id, counter, sds_root=sds_root, graph=graph)
+    expectations = expectations_from(mapped.bundle)
+    unbudgeted = (
+        mapped
+        if substitute
+        else compile_context(
+            design, task.node_id, counter, sds_root=sds_root, graph=graph, substitute=False
+        )
+    )
     if "U" in arms:
         contexts.append(
             Context("U", None, unbudgeted.bundle.text, unbudgeted.tokens, unbudgeted.seconds)
@@ -118,6 +128,7 @@ def build_contexts(
                     budget=budget,
                     selector=selector,
                     optimizer=optimizer,
+                    substitute=substitute,
                     request=task.request,
                 )
             except BudgetError as error:

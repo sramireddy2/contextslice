@@ -83,6 +83,7 @@ class RunConfig:
     dry_run: bool
     typecheck: bool
     optimizer: str = "exact"  # P7 optimizer for the S and C arms (runs before 2026-10-18: greedy)
+    substitute: bool = True  # False: the "no Code Connect" regime (P4 off for S, C and U)
 
 
 def run(
@@ -124,7 +125,15 @@ def run(
     contexts_by_task: dict[str, dict[tuple[str, int | None], Context]] = {}
     for task in tasks:
         contexts, expectations[task.id] = build_contexts(
-            design, graph, task, config.budgets, counter, sds_root, config.arms, config.optimizer
+            design,
+            graph,
+            task,
+            config.budgets,
+            counter,
+            sds_root,
+            config.arms,
+            config.optimizer,
+            substitute=config.substitute,
         )
         contexts_by_task[task.id] = {(c.arm, c.budget): c for c in contexts}
         for context in contexts:

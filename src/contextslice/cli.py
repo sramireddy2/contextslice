@@ -347,6 +347,9 @@ def eval_command(
     ] = False,
     typecheck: Annotated[bool, typer.Option(help="Run tsc over the generated files.")] = True,
     optimizer: Annotated[str, typer.Option(help="P7 optimizer for S/C: exact | greedy.")] = "exact",
+    no_substitute: Annotated[
+        bool, typer.Option("--no-substitute", help="No Code Connect regime: P4 off for S, C, U.")
+    ] = False,
     snapshots_dir: SnapshotsDir = Path("snapshots"),
     sds_dir: Annotated[Path, typer.Option(help="Checkout of the figma/sds repo.")] = Path(
         "vendor/sds"
@@ -379,6 +382,7 @@ def eval_command(
         dry_run=dry_run,
         typecheck=typecheck,
         optimizer=optimizer,
+        substitute=not no_substitute,
     )
     samples = run(
         design,
